@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podium Automation Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-600">Podium Automation Manager</h1>
+                    <p class="text-gray-600">Manage your Podium text campaigns and automations</p>
+                </div>
+                <div id="auth-status" class="text-right">
+                    <div id="logged-out" class="">
+                        <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            Connect to Podium
+                        </button>
+                    </div>
+                    <div id="logged-in" class="hidden">
+                        <span id="user-info" class="block mb-2 text-sm text-gray-600"></span>
+                        <button id="logout-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-3 rounded text-sm">
+                            Disconnect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Auth Required Message -->
+        <div id="auth-required" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-8">
+            <p>Please connect to your Podium account to manage your automations.</p>
+            <p class="mt-2">To get started, go to the <strong>Settings</strong> tab below to configure your OAuth credentials.</p>
+        </div>
+
+        <!-- Main Content (Only dashboard hidden until authenticated) -->
+        <div id="main-content">
+            <!-- Navigation Tabs -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="-mb-px flex">
+                    <a href="#" class="tab-link" data-target="dashboard">
+                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                            Dashboard
+                        </div>
+                    </a>
+                    <a href="#" class="tab-link" data-target="campaigns">
+                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                            Campaigns
+                        </div>
+                    </a>
+                    <a href="#" class="tab-link" data-target="templates">
+                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                            Templates
+                        </div>
+                    </a>
+                    <a href="#" class="tab-link" data-target="contacts">
+                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                            Contacts
+                        </div>
+                    </a>
+                    <a href="#" class="tab-link active-tab" data-target="settings">
+                        <div class="border-blue-500 text-blue-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                            Settings
+                        </div>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-pane hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-lg font-bold mb-2">Active Campaigns</h3>
+                            <p class="text-3xl font-bold text-blue-600" id="active-campaigns-count">-</p>
+                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-campaigns">-</span></p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-lg font-bold mb-2">Messages Sent (30d)</h3>
+                            <p class="text-3xl font-bold text-blue-600" id="messages-sent-count">-</p>
+                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-messages">-</span></p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-lg font-bold mb-2">Response Rate</h3>
+                            <p class="text-3xl font-bold text-blue-600" id="response-rate">-</p>
+                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-rate">-</span></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                        <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Date
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Activity
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Details
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="activity-table-body">
+                                    <tr>
+                                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">
+                                            Connect to Podium to view recent activity
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campaigns Tab -->
+                <div id="campaigns-tab" class="tab-pane hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Text Campaigns</h2>
+                        <button id="new-campaign-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            New Campaign
+                        </button>
+                    </div>
+
+                    <!-- Excel Import UI -->
+                    <div class="mb-6">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Import Contacts from Excel</h3>
+                            <p class="text-gray-600 mb-4">Upload an Excel file with contact information to create a new campaign.</p>
+                            
+                            <div class="mb-4">
+                                <label for="excel-file" class="block text-sm font-medium text-gray-700 mb-2">Excel File</label>
+                                <input type="file" id="excel-file" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100
+                                "/>
+                                <p class="text-xs text-gray-500 mt-1">The file should have columns for 'name' and 'phoneNumber'</p>
+                            </div>
+                            
+                            <button id="import-excel-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                Import Contacts
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="campaign-from-excel" class="hidden">
+                        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                            <h3 class="text-lg font-bold mb-4">Create Campaign from Imported Contacts</h3>
+                            
+                            <div class="mb-4">
+                                <label for="imported-campaign-name" class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+                                <input type="text" id="imported-campaign-name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="imported-campaign-message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                                <textarea id="imported-campaign-message" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
+                                <p class="text-sm text-gray-500 mt-1">Character count: <span id="imported-message-char-count">0</span>/160</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="imported-campaign-locations" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <select id="imported-campaign-locations" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                    <option value="" disabled selected>Select a location</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <h4 class="font-medium text-gray-700 mb-2">Imported Contacts</h4>
+                                <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50 sticky top-0">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Include</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="imported-contacts-table" class="bg-white divide-y divide-gray-200">
+                                            <!-- Contacts will be added here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button id="send-imported-campaign-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                    Send Campaign
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Name
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Created
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Stats
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="campaigns-table-body">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                        Connect to Podium to view campaigns
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- New Campaign Modal -->
+                    <div id="campaign-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold" id="campaign-modal-title">New Campaign</h3>
+                                <button class="modal-close text-gray-500 hover:text-gray-700">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <form id="campaign-form">
+                                <div class="mb-4">
+                                    <label for="campaign-name" class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+                                    <input type="text" id="campaign-name" name="name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="campaign-message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                                    <textarea id="campaign-message" name="message" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
+                                    <p class="text-sm text-gray-500 mt-1">Character count: <span id="message-char-count">0</span>/160</p>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="campaign-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
+                                    <select id="campaign-locations" name="locations" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                        <option value="" disabled>Loading locations...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
+                                    <div class="flex flex-col space-y-2">
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="includeActiveConversations" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                            <span class="ml-2 text-sm text-gray-700">Include subscribers with active conversations</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="checkbox" name="recentlySentSubscriberOverride" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                            <span class="ml-2 text-sm text-gray-700">Include subscribers who received campaigns in the last 5 days</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button type="submit" id="campaign-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                        Create Campaign
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Templates Tab -->
+                <div id="templates-tab" class="tab-pane hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Message Templates</h2>
+                        <button id="new-template-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            New Template
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Created
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Last Used
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="templates-table-body">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                        Connect to Podium to view templates
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- New Template Modal -->
+                    <div id="template-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold" id="template-modal-title">New Template</h3>
+                                <button class="modal-close text-gray-500 hover:text-gray-700">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <form id="template-form">
+                                <div class="mb-4">
+                                    <label for="template-title" class="block text-sm font-medium text-gray-700 mb-1">Template Title</label>
+                                    <input type="text" id="template-title" name="title" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="template-text" class="block text-sm font-medium text-gray-700 mb-1">Message Text</label>
+                                    <textarea id="template-text" name="text" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
+                                    <p class="text-sm text-gray-500 mt-1">Character count: <span id="template-char-count">0</span>/160</p>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="template-access-level" class="block text-sm font-medium text-gray-700 mb-1">Access Level</label>
+                                    <select id="template-access-level" name="accessLevel" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                        <option value="location">Location</option>
+                                        <option value="organization">Organization</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4" id="location-select-container">
+                                    <label for="template-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
+                                    <select id="template-locations" name="locationUids" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                        <option value="" disabled>Loading locations...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <button type="submit" id="template-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                        Create Template
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contacts Tab -->
+                <div id="contacts-tab" class="tab-pane hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Contacts</h2>
+                        <button id="new-contact-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            New Contact
+                        </button>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="relative">
+                            <input type="text" id="search-contacts" class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search contacts...">
+                            <div class="absolute left-3 top-2.5">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Name
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Phone Number
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Email
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Tags
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="contacts-table-body">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                        Connect to Podium to view contacts
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- New Contact Modal -->
+                    <div id="contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold" id="contact-modal-title">New Contact</h3>
+                                <button class="modal-close text-gray-500 hover:text-gray-700">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <form id="contact-form">
+                                <div class="mb-4">
+                                    <label for="contact-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input type="text" id="contact-name" name="name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="contact-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                    <input type="tel" id="contact-phone" name="phoneNumber" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                    <p class="text-sm text-gray-500 mt-1">Format: +15555555555</p>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="contact-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input type="email" id="contact-email" name="email" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="contact-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
+                                    <select id="contact-locations" name="locations" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
+                                        <option value="" disabled>Loading locations...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <button type="submit" id="contact-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                        Create Contact
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-pane">
+                    <h2 class="text-xl font-bold mb-6">Settings</h2>
+
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h3 class="text-lg font-bold mb-4">OAuth Configuration</h3>
+                        <div class="mb-4">
+                            <label for="client-id" class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                            <input type="text" id="client-id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        </div>
+                        <div class="mb-4">
+                            <label for="client-secret" class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                            <input type="password" id="client-secret" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        </div>
+                        <div class="mb-4">
+                            <label for="redirect-uri" class="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+                            <input type="text" id="redirect-uri" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        </div>
+                        <button id="save-oauth-settings" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            Save OAuth Settings
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-bold mb-4">Application Settings</h3>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Auto-refresh Data</label>
+                            <select id="refresh-interval" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                <option value="0">Off</option>
+                                <option value="60000">Every minute</option>
+                                <option value="300000">Every 5 minutes</option>
+                                <option value="900000">Every 15 minutes</option>
+                                <option value="1800000">Every 30 minutes</option>
+                                <option value="3600000">Every hour</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button id="save-app-settings" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                Save Application Settings
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                        <h3 class="text-lg font-bold mb-4">Help & Information</h3>
+                        <div class="prose text-gray-700">
+                            <h4 class="font-bold">OAuth Configuration Instructions</h4>
+                            <ol class="list-decimal list-inside">
+                                <li class="mb-2">Sign up or sign in at <a href="https://developer.podium.com" target="_blank" class="text-blue-600 hover:underline">developer.podium.com</a></li>
+                                <li class="mb-2">Create a new application in the developer portal</li>
+                                <li class="mb-2">When setting up your application, specify your redirect URI:
+                                    <ul class="list-disc list-inside ml-4 mt-1">
+                                        <li>For local file, use the exact file URL (e.g., file:///path/to/podium_connect.html)</li>
+                                        <li>If using a local server, use http://localhost:port/podium_connect.html</li>
+                                    </ul>
+                                </li>
+                                <li class="mb-2">Once approved, enter your Client ID and Client Secret above</li>
+                                <li class="mb-2">Click "Save OAuth Settings" to store your credentials</li>
+                                <li class="mb-2">Return to the main page and click "Connect to Podium"</li>
+                            </ol>
+                            
+                            <h4 class="font-bold mt-4">Running with a Local Server</h4>
+                            <p>For better OAuth compatibility, you can serve this file using a simple HTTP server:</p>
+                            <ol class="list-decimal list-inside">
+                                <li class="mb-2">Install Python if you don't have it</li>
+                                <li class="mb-2">Open a command prompt in your app folder</li>
+                                <li class="mb-2">Run: <code class="bg-gray-100 px-2 py-1 rounded">python -m http.server 8000</code></li>
+                                <li class="mb-2">Access your app at: <code class="bg-gray-100 px-2 py-1 rounded">http://localhost:8000/podium_connect.html</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // OAuth Configuration Storage
+        const config = {
+            clientId: localStorage.getItem('podium_client_id') || '',
+            clientSecret: localStorage.getItem('podium_client_secret') || '',
+            redirectUri: localStorage.getItem('podium_redirect_uri') || window.location.origin,
+            refreshInterval: parseInt(localStorage.getItem('podium_refresh_interval') || '0', 10),
+            apiBase: 'https://api.podium.com'
+        };
+
+        // Auth Token Storage
+        let auth = {
+            accessToken: localStorage.getItem('podium_access_token') || null,
+            refreshToken: localStorage.getItem('podium_refresh_token') || null,
+            expiresAt: localStorage.getItem('podium_expires_at') || null
+        };
+
+        // DOM Elements
+        const elements = {
+            loginBtn: document.getElementById('login-btn'),
+            logoutBtn: document.getElementById('logout-btn'),
+            loggedOut: document.getElementById('logged-out'),
+            loggedIn: document.getElementById('logged-in'),
+            userInfo: document.getElementById('user-info'),
+            authRequired: document.getElementById('auth-required'),
+            mainContent: document.getElementById('main-content'),
+            tabLinks: document.querySelectorAll('.tab-link'),
+            tabPanes: document.querySelectorAll('.tab-pane'),
+            
+            // Settings inputs
+            clientIdInput: document.getElementById('client-id'),
+            clientSecretInput: document.getElementById('client-secret'),
+            redirectUriInput: document.getElementById('redirect-uri'),
+            refreshIntervalSelect: document.getElementById('refresh-interval'),
+            saveOAuthBtn: document.getElementById('save-oauth-settings'),
+            saveAppSettingsBtn: document.getElementById('save-app-settings'),
+            
+            // Campaign elements
+            newCampaignBtn: document.getElementById('new-campaign-btn'),
+            campaignModal: document.getElementById('campaign-modal'),
+            campaignForm: document.getElementById('campaign-form'),
+            campaignTableBody: document.getElementById('campaigns-table-body'),
+            
+            // Template elements
+            newTemplateBtn: document.getElementById('new-template-btn'),
+            templateModal: document.getElementById('template-modal'),
+            templateForm: document.getElementById('template-form'),
+            templatesTableBody: document.getElementById('templates-table-body'),
+            
+            // Contact elements
+            newContactBtn: document.getElementById('new-contact-btn'),
+            contactModal: document.getElementById('contact-modal'),
+            contactForm: document.getElementById('contact-form'),
+            contactsTableBody: document.getElementById('contacts-table-body')
+        };
+
+        // Initialize UI
+        function init() {
+            // Load settings into form
+            elements.clientIdInput.value = config.clientId;
+            elements.clientSecretInput.value = config.clientSecret;
+            elements.redirectUriInput.value = config.redirectUri;
+            elements.refreshIntervalSelect.value = config.refreshInterval;
+            
+            // Check for URL params (OAuth callback)
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                // Remove code from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                // Exchange code for token
+                exchangeCodeForToken(code);
+            }
+            
+            // Check if we have a valid token
+            if (auth.accessToken && auth.expiresAt && new Date(auth.expiresAt) > new Date()) {
+                updateAuthUI(true);
+                loadInitialData();
+                // Switch to dashboard if authenticated
+                switchTab('dashboard');
+            } else if (auth.refreshToken) {
+                refreshAccessToken();
+            } else {
+                updateAuthUI(false);
+                // If not authenticated, start on settings tab
+                switchTab('settings');
+            }
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Setup refresh interval if enabled
+            if (config.refreshInterval > 0) {
+                setInterval(refreshData, config.refreshInterval);
+            }
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Auth buttons
+            elements.loginBtn.addEventListener('click', initiateOAuth);
+            elements.logoutBtn.addEventListener('click', logout);
+            
+            // Tab navigation
+            elements.tabLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('data-target');
+                    switchTab(targetId);
+                });
+            });
+            
+            // Settings save buttons
+            elements.saveOAuthBtn.addEventListener('click', saveOAuthSettings);
+            elements.saveAppSettingsBtn.addEventListener('click', saveAppSettings);
+            
+            // Campaign modal
+            elements.newCampaignBtn.addEventListener('click', () => openModal('campaign'));
+            elements.campaignForm.addEventListener('submit', handleCampaignSubmit);
+            
+            // Template modal
+            elements.newTemplateBtn.addEventListener('click', () => openModal('template'));
+            elements.templateForm.addEventListener('submit', handleTemplateSubmit);
+            
+            // Contact modal
+            elements.newContactBtn.addEventListener('click', () => openModal('contact'));
+            elements.contactForm.addEventListener('submit', handleContactSubmit);
+            
+            // Close modals
+            document.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[id$="-modal"]').forEach(modal => {
+                        modal.classList.add('hidden');
+                    });
+                });
+            });
+            
+            // Add Excel import listeners
+            addExcelImportListeners();
+        }
+
+        // Excel Import Event Listeners
+        function addExcelImportListeners() {
+            const importExcelBtn = document.getElementById('import-excel-btn');
+            if (importExcelBtn) {
+                importExcelBtn.addEventListener('click', () => {
+                    const fileInput = document.getElementById('excel-file');
+                    if (fileInput.files.length > 0) {
+                        importExcelContacts(fileInput.files[0]);
+                    } else {
+                        alert('Please select an Excel file');
+                    }
+                });
+            }
+            
+            const sendImportedCampaignBtn = document.getElementById('send-imported-campaign-btn');
+            if (sendImportedCampaignBtn) {
+                sendImportedCampaignBtn.addEventListener('click', sendImportedCampaign);
+            }
+            
+            // Character counter for message
+            const importedCampaignMessage = document.getElementById('imported-campaign-message');
+            const importedMessageCharCount = document.getElementById('imported-message-char-count');
+            if (importedCampaignMessage && importedMessageCharCount) {
+                importedCampaignMessage.addEventListener('input', () => {
+                    importedMessageCharCount.textContent = importedCampaignMessage.value.length;
+                });
+            }
+        }
+
+        // Switch between tabs
+        function switchTab(targetId) {
+            // Update tab links
+            elements.tabLinks.forEach(link => {
+                const linkTarget = link.getAttribute('data-target');
+                const div = link.querySelector('div');
+                
+                if (linkTarget === targetId) {
+                    div.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    div.classList.add('border-blue-500', 'text-blue-600');
+                } else {
+                    div.classList.remove('border-blue-500', 'text-blue-600');
+                    div.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                }
+            });
+            
+            // Show selected tab
+            elements.tabPanes.forEach(pane => {
+                if (pane.id === `${targetId}-tab`) {
+                    pane.classList.remove('hidden');
+                } else {
+                    pane.classList.add('hidden');
+                }
+            });
+        }
+
+        // Save OAuth Settings
+        function saveOAuthSettings() {
+            config.clientId = elements.clientIdInput.value;
+            config.clientSecret = elements.clientSecretInput.value;
+            config.redirectUri = elements.redirectUriInput.value;
+            
+            localStorage.setItem('podium_client_id', config.clientId);
+            localStorage.setItem('podium_client_secret', config.clientSecret);
+            localStorage.setItem('podium_redirect_uri', config.redirectUri);
+            
+            alert('OAuth settings saved!');
+        }
+
+        // Save App Settings
+        function saveAppSettings() {
+            config.refreshInterval = parseInt(elements.refreshIntervalSelect.value, 10);
+            localStorage.setItem('podium_refresh_interval', config.refreshInterval);
+            
+            // Clear any existing interval and set a new one if needed
+            if (window.refreshIntervalId) {
+                clearInterval(window.refreshIntervalId);
+                window.refreshIntervalId = null;
+            }
+            
+            if (config.refreshInterval > 0) {
+                window.refreshIntervalId = setInterval(refreshData, config.refreshInterval);
+            }
+            
+            alert('Application settings saved!');
+        }
+
+        // Open modal dialogs
+        function openModal(type) {
+            document.getElementById(`${type}-modal`).classList.remove('hidden');
+            
+            // Reset form
+            document.getElementById(`${type}-form`).reset();
+            
+            // Load any necessary data (like locations dropdown)
+            if (type === 'campaign' || type === 'template' || type === 'contact') {
+                loadLocations(type);
+            }
+        }
+
+        // Load locations for dropdowns
+        function loadLocations(formType) {
+            // This would make an API request to get locations
+            apiRequest('/v4/locations', 'GET')
+                .then(response => {
+                    const locations = response.data;
+                    const select = document.getElementById(`${formType}-locations`);
+                    
+                    // Clear existing options
+                    select.innerHTML = '';
+                    
+                    // Add options for each location
+                    locations.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.uid;
+                        option.textContent = location.name || location.displayName;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading locations:', error);
+                    alert('Failed to load locations. Please try again.');
+                });
+        }
+
+        // Handle campaign form submission
+        function handleCampaignSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(elements.campaignForm);
+            
+            // Create request payload
+            const campaign = {
+                name: formData.get('name'),
+                message: formData.get('message'),
+                locations: Array.from(document.getElementById('campaign-locations').selectedOptions).map(opt => opt.value),
+                includeActiveConversations: formData.get('includeActiveConversations') === 'on',
+                recentlySentSubscriberOverride: formData.get('recentlySentSubscriberOverride') === 'on',
+                status: 'ACTIVE'
+            };
+            
+            // Submit to API
+            apiRequest('/v4/campaigns', 'POST', campaign)
+                .then(response => {
+                    document.getElementById('campaign-modal').classList.add('hidden');
+                    loadCampaigns();
+                    alert('Campaign created successfully!');
+                })
+                .catch(error => {
+                    console.error('Error creating campaign:', error);
+                    alert('Failed to create campaign. Please try again.');
+                });
+        }
+
+        // Handle template form submission
+        function handleTemplateSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(elements.templateForm);
+            
+            // Create request payload
+            const template = {
+                title: formData.get('title'),
+                text: formData.get('text'),
+                accessLevel: formData.get('accessLevel'),
+                type: 'custom',
+                nonDeletable: false
+            };
+            
+            // Add location UIDs if access level is location
+            if (template.accessLevel === 'location') {
+                template.locationUids = Array.from(document.getElementById('template-locations').selectedOptions).map(opt => opt.value);
+            }
+            
+            // Submit to API
+            apiRequest('/v4/templates', 'POST', template)
+                .then(response => {
+                    document.getElementById('template-modal').classList.add('hidden');
+                    loadTemplates();
+                    alert('Template created successfully!');
+                })
+                .catch(error => {
+                    console.error('Error creating template:', error);
+                    alert('Failed to create template. Please try again.');
+                });
+        }
+
+        // Handle contact form submission
+        function handleContactSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(elements.contactForm);
+            
+            // Create request payload
+            const contact = {
+                name: formData.get('name'),
+                phoneNumber: formData.get('phoneNumber'),
+                email: formData.get('email'),
+                locations: Array.from(document.getElementById('contact-locations').selectedOptions).map(opt => opt.value)
+            };
+            
+            // Submit to API
+            apiRequest('/v4/contacts', 'POST', contact)
+                .then(response => {
+                    document.getElementById('contact-modal').classList.add('hidden');
+                    loadContacts();
+                    alert('Contact created successfully!');
+                })
+                .catch(error => {
+                    console.error('Error creating contact:', error);
+                    alert('Failed to create contact. Please try again.');
+                });
+        }
+
+        // Import Excel Contacts
+        function importExcelContacts(excelFile) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // Assume first sheet
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Process the data
+                processContactsFromExcel(jsonData);
+            };
+            reader.readAsArrayBuffer(excelFile);
+        }
+
+        // Process the extracted Excel data
+        function processContactsFromExcel(contacts) {
+            // Validate contacts have necessary data
+            const validContacts = contacts.filter(contact => 
+                contact.name && contact.phoneNumber && 
+                validatePhoneNumber(contact.phoneNumber)
+            );
+            
+            if (validContacts.length === 0) {
+                alert('No valid contacts found in the Excel file. Please ensure your file has columns for "name" and "phoneNumber".');
+                return;
+            }
+            
+            // Display the extracted contacts
+            const contactsTable = document.getElementById('imported-contacts-table');
+            contactsTable.innerHTML = '';
+            
+            validContacts.forEach(contact => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${escapeHtml(contact.name)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${formatPhoneNumber(contact.phoneNumber)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <input type="checkbox" checked class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                    </td>
+                `;
+                contactsTable.appendChild(row);
+            });
+            
+            // Load locations for the dropdown
+            loadLocations('imported-campaign');
+            
+            // Show the campaign creation section
+            document.getElementById('campaign-from-excel').classList.remove('hidden');
+            
+            // Scroll to the campaign creation section
+            document.getElementById('campaign-from-excel').scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+
+        // Validate and format phone numbers
+        function validatePhoneNumber(phone) {
+            // Remove non-digit characters
+            const digitsOnly = phone.toString().replace(/\D/g, '');
+            
+            // Check if the number has at least 10 digits
+            return digitsOnly.length >= 10;
+        }
+
+        function formatPhoneNumber(phone) {
+            // Remove non-digit characters
+            let digitsOnly = phone.toString().replace(/\D/g, '');
+            
+            // Ensure it starts with country code
+            if (digitsOnly.length === 10) {
+                digitsOnly = '1' + digitsOnly; // Add US country code if not present
+            }
+            
+            return '+' + digitsOnly;
+        }
+
+        // Send campaign to imported contacts
+        function sendImportedCampaign() {
+            const campaignName = document.getElementById('imported-campaign-name').value;
+            const message = document.getElementById('imported-campaign-message').value;
+            const locationUid = document.getElementById('imported-campaign-locations').value;
+            
+            if (!campaignName || !message || !locationUid) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            // Get selected contacts
+            const contactRows = document.getElementById('imported-contacts-table').querySelectorAll('tr');
+            const selectedContacts = [];
+            
+            contactRows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const name = row.querySelector('td:first-child').textContent;
+                    const phoneNumber = row.querySelector('td:nth-child(2)').textContent;
+                    selectedContacts.push({ name, phoneNumber });
+                }
+            });
+            
+            if (selectedContacts.length === 0) {
+                alert('Please select at least one contact');
+                return;
+            }
+            
+            // First, create contacts for each selected contact
+            const createContactPromises = selectedContacts.map(contact => 
+                apiRequest('/v4/contacts', 'POST', {
+                    name: contact.name,
+                    phoneNumber: contact.phoneNumber,
+                    locations: [locationUid]
+                })
+            );
+            
+            // Show loading indicator
+            const sendButton = document.getElementById('send-imported-campaign-btn');
+            const originalText = sendButton.textContent;
+            sendButton.textContent = 'Sending...';
+            sendButton.disabled = true;
+            
+            // Process all contact creation requests
+            Promise.all(createContactPromises)
+                .then(() => {
+                    // Then create the campaign
+                    return apiRequest('/v4/campaigns', 'POST', {
+                        name: campaignName,
+                        message: message,
+                        locations: [locationUid],
+                        status: 'ACTIVE'
+                    });
+                })
+                .then(response => {
+                    alert('Campaign created and sent successfully!');
+                    
+                    // Reset form
+                    document.getElementById('imported-campaign-name').value = '';
+                    document.getElementById('imported-campaign-message').value = '';
+                    document.getElementById('imported-contacts-table').innerHTML = '';
+                    document.getElementById('campaign-from-excel').classList.add('hidden');
+                    document.getElementById('excel-file').value = '';
+                    
+                    // Refresh campaigns list
+                    loadCampaigns();
+                })
+                .catch(error => {
+                    console.error('Error sending campaign:', error);
+                    alert('Failed to create campaign. Please try again.');
+                })
+                .finally(() => {
+                    // Restore button
+                    sendButton.textContent = originalText;
+                    sendButton.disabled = false;
+                });
+        }
+
+        // OAuth Flow
+        function initiateOAuth() {
+            if (!config.clientId || !config.redirectUri) {
+                alert('Please configure OAuth settings first.');
+                switchTab('settings');
+                return;
+            }
+            
+            const authUrl = `${config.apiBase}/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=read_locations%20write_campaigns%20read_campaigns%20write_templates%20read_templates%20write_contacts%20read_contacts%20write_messages%20read_messages&state=podium_auth`;
+            
+            window.location.href = authUrl;
+        }
+
+        // Exchange code for token
+        function exchangeCodeForToken(code) {
+            fetch(`${config.apiBase}/oauth/token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: code,
+                    redirect_uri: config.redirectUri,
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    grant_type: 'authorization_code'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.access_token) {
+                    // Calculate expiry (default to 10 hours from now if not provided)
+                    const expiresIn = data.expires_in || 36000;
+                    const expiresAt = new Date(new Date().getTime() + expiresIn * 1000).toISOString();
+                    
+                    // Store tokens
+                    auth = {
+                        accessToken: data.access_token,
+                        refreshToken: data.refresh_token,
+                        expiresAt: expiresAt
+                    };
+                    
+                    localStorage.setItem('podium_access_token', auth.accessToken);
+                    localStorage.setItem('podium_refresh_token', auth.refreshToken);
+                    localStorage.setItem('podium_expires_at', auth.expiresAt);
+                    
+                    updateAuthUI(true);
+                    loadInitialData();
+                } else {
+                    console.error('Failed to exchange code for token:', data);
+                    alert('Authentication failed. Please try again.');
+                    updateAuthUI(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error during token exchange:', error);
+                alert('Authentication failed. Please try again.');
+                updateAuthUI(false);
+            });
+        }
+
+        // Refresh Access Token
+        function refreshAccessToken() {
+            fetch(`${config.apiBase}/oauth/token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    grant_type: 'refresh_token',
+                    refresh_token: auth.refreshToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.access_token) {
+                    // Calculate expiry (default to 10 hours from now if not provided)
+                    const expiresIn = data.expires_in || 36000;
+                    const expiresAt = new Date(new Date().getTime() + expiresIn * 1000).toISOString();
+                    
+                    // Store tokens
+                    auth = {
+                        accessToken: data.access_token,
+                        refreshToken: data.refresh_token || auth.refreshToken,
+                        expiresAt: expiresAt
+                    };
+                    
+                    localStorage.setItem('podium_access_token', auth.accessToken);
+                    localStorage.setItem('podium_refresh_token', auth.refreshToken);
+                    localStorage.setItem('podium_expires_at', auth.expiresAt);
+                    
+                    updateAuthUI(true);
+                    loadInitialData();
+                } else {
+                    console.error('Failed to refresh token:', data);
+                    updateAuthUI(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error during token refresh:', error);
+                updateAuthUI(false);
+            });
+        }
+
+        // Logout
+        function logout() {
+            // Clear auth data
+            auth = {
+                accessToken: null,
+                refreshToken: null,
+                expiresAt: null
+            };
+            
+            localStorage.removeItem('podium_access_token');
+            localStorage.removeItem('podium_refresh_token');
+            localStorage.removeItem('podium_expires_at');
+            
+            updateAuthUI(false);
+        }
+
+        // Update UI based on auth state
+        function updateAuthUI(isLoggedIn) {
+            if (isLoggedIn) {
+                elements.loggedOut.classList.add('hidden');
+                elements.loggedIn.classList.remove('hidden');
+                elements.authRequired.classList.add('hidden');
+                // We don't hide mainContent anymore as settings is always visible
+                // Only hide specific tabs that require auth
+                document.getElementById('dashboard-tab').classList.remove('hidden');
+                document.getElementById('campaigns-tab').classList.remove('hidden');
+                document.getElementById('templates-tab').classList.remove('hidden');
+                document.getElementById('contacts-tab').classList.remove('hidden');
+                elements.userInfo.textContent = 'Authenticated with Podium';
+            } else {
+                elements.loggedOut.classList.remove('hidden');
+                elements.loggedIn.classList.add('hidden');
+                elements.authRequired.classList.remove('hidden');
+                // Hide tabs that require auth
+                document.getElementById('dashboard-tab').classList.add('hidden');
+                document.getElementById('campaigns-tab').classList.add('hidden');
+                document.getElementById('templates-tab').classList.add('hidden');
+                document.getElementById('contacts-tab').classList.add('hidden');
+                elements.userInfo.textContent = '';
+            }
+        }
+
+        // API Request Helper
+        async function apiRequest(endpoint, method = 'GET', body = null) {
+            // Check if token is expired
+            if (auth.expiresAt && new Date(auth.expiresAt) <= new Date()) {
+                // Token is expired, try to refresh
+                if (auth.refreshToken) {
+                    await refreshAccessToken();
+                } else {
+                    throw new Error('Session expired. Please log in again.');
+                }
+            }
+            
+            // Make the request
+            const options = {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${auth.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            const response = await fetch(`${config.apiBase}${endpoint}`, options);
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API request failed');
+            }
+            
+            return response.json();
+        }
+
+        // Load Initial Data
+        function loadInitialData() {
+            // Load dashboard data
+            loadDashboardData();
+            
+            // Load data for other tabs
+            loadCampaigns();
+            loadTemplates();
+            loadContacts();
+        }
+
+        // Refresh Data
+        function refreshData() {
+            if (auth.accessToken) {
+                loadInitialData();
+            }
+        }
+
+        // Load Dashboard Data
+        function loadDashboardData() {
+            // Load active campaigns count
+            apiRequest('/v4/campaigns?status=ACTIVE')
+                .then(response => {
+                    document.getElementById('active-campaigns-count').textContent = response.data.length;
+                    document.getElementById('last-updated-campaigns').textContent = new Date().toLocaleTimeString();
+                })
+                .catch(error => {
+                    console.error('Error loading active campaigns:', error);
+                });
+            
+            // Note: These endpoints might not exist exactly as shown
+            // You would need to adapt to what's available in the Podium API
+            
+            // Load recent activity
+            apiRequest('/v4/campaign_interactions?limit=10')
+                .then(response => {
+                    const activityTableBody = document.getElementById('activity-table-body');
+                    activityTableBody.innerHTML = '';
+                    
+                    if (response.data.length === 0) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">
+                                No recent activity found
+                            </td>
+                        `;
+                        activityTableBody.appendChild(tr);
+                        return;
+                    }
+                    
+                    response.data.forEach(interaction => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${new Date(interaction.createdAt).toLocaleString()}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${formatInteractionType(interaction.interactionType)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${interaction.campaign ? `Campaign: ${interaction.campaign.uid.substring(0, 8)}...` : 'N/A'}
+                            </td>
+                        `;
+                        activityTableBody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading recent activity:', error);
+                });
+        }
+
+        // Load Campaigns
+        function loadCampaigns() {
+            apiRequest('/v4/campaigns')
+                .then(response => {
+                    const campaignsTableBody = document.getElementById('campaigns-table-body');
+                    campaignsTableBody.innerHTML = '';
+                    
+                    if (response.data.length === 0) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No campaigns found
+                            </td>
+                        `;
+                        campaignsTableBody.appendChild(tr);
+                        return;
+                    }
+                    
+                    response.data.forEach(campaign => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${escapeHtml(campaign.name)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(campaign.status)}">
+                                    ${campaign.status}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${formatDate(campaign.createdAt)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${campaign.locations ? campaign.locations.length : 0} locations
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                <button class="text-red-600 hover:text-red-900">Delete</button>
+                            </td>
+                        `;
+                        campaignsTableBody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading campaigns:', error);
+                });
+        }
+
+        // Load Templates
+        function loadTemplates() {
+            apiRequest('/v4/templates')
+                .then(response => {
+                    const templatesTableBody = document.getElementById('templates-table-body');
+                    templatesTableBody.innerHTML = '';
+                    
+                    if (response.data.length === 0) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No templates found
+                            </td>
+                        `;
+                        templatesTableBody.appendChild(tr);
+                        return;
+                    }
+                    
+                    response.data.forEach(template => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${escapeHtml(template.title)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${template.type}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${formatDate(template.createdAt)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${template.lastUsedAt ? formatDate(template.lastUsedAt) : 'Never'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                <button class="text-red-600 hover:text-red-900">Delete</button>
+                            </td>
+                        `;
+                        templatesTableBody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading templates:', error);
+                });
+        }
+
+        // Load Contacts
+        function loadContacts() {
+            apiRequest('/v4/contacts?limit=20')
+                .then(response => {
+                    const contactsTableBody = document.getElementById('contacts-table-body');
+                    contactsTableBody.innerHTML = '';
+                    
+                    if (response.data.length === 0) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No contacts found
+                            </td>
+                        `;
+                        contactsTableBody.appendChild(tr);
+                        return;
+                    }
+                    
+                    response.data.forEach(contact => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${escapeHtml(contact.name)}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${contact.phoneNumbers && contact.phoneNumbers.length ? contact.phoneNumbers[0] : 'N/A'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${contact.emails && contact.emails.length ? contact.emails[0] : 'N/A'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                ${contact.tags && contact.tags.length ? contact.tags.map(tag => `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${escapeHtml(tag.label)}</span>`).join(' ') : 'No tags'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                <button class="text-red-600 hover:text-red-900">Delete</button>
+                            </td>
+                        `;
+                        contactsTableBody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading contacts:', error);
+                });
+        }
+
+        // Helper Functions
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'ACTIVE':
+                    return 'bg-green-100 text-green-800';
+                case 'DRAFT':
+                    return 'bg-yellow-100 text-yellow-800';
+                case 'COMPLETED':
+                    return 'bg-blue-100 text-blue-800';
+                case 'STOPPED':
+                case 'ERROR':
+                    return 'bg-red-100 text-red-800';
+                default:
+                    return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function formatInteractionType(type) {
+            switch (type) {
+                case 'sent':
+                    return 'Message Sent';
+                case 'response':
+                    return 'Response Received';
+                case 'feedback_left':
+                    return 'Feedback Left';
+                case 'review_left':
+                    return 'Review Left';
+                default:
+                    return type.replace('_', ' ').charAt(0).toUpperCase() + type.slice(1);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
