@@ -637,7 +637,8 @@
                     updateAuthUI(false);
                     // If not authenticated, start on settings tab
                     switchTab('settings');
-                }
+                // Ensure this closing brace corresponds to an opening brace
+                // If it is misplaced, check the surrounding code structure.
             }
             
             // Setup event listeners
@@ -1087,7 +1088,12 @@
             }
             
             const scope = "read_locations write_campaigns read_campaigns write_templates read_templates write_contacts read_contacts write_messages read_messages";
-            const authUrl = `${config.apiBase}/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(scope)}&state=podium_auth`;
+            const authUrl = `${config.apiBase}/oauth/authorize` +
+              `?response_type=code` +                                // NEW
+              `&client_id=${config.clientId}` +
+              `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
+              `&scope=${encodeURIComponent(scope)}` +
+              `&state=podium_auth`;
             
             alert("About to redirect to: " + authUrl);
             console.log("Redirecting to:", authUrl);
@@ -1108,7 +1114,50 @@
 
         // Exchange code for token
         function exchangeCodeForToken(code) {
-            console.log("Exchanging authorization code for access token...");
+            console.log("Sending code to Netlify function…");
+          
+            fetch('https://podiumdev.netlify.app/.netlify/functions/exchange', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: code,
+                redirect_uri: config.redirectUri          // required so Podium matches it
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              console.log("Token exchange response:", data);
+          
+              if (data.access_token) {
+                const expiresIn  = data.expires_in || 36000;
+                const expiresAt  = new Date(Date.now() + expiresIn * 1000).toISOString();
+          
+                auth = {
+                  accessToken: data.access_token,
+                  refreshToken: data.refresh_token,
+                  expiresAt
+                };
+          
+                localStorage.setItem('podium_access_token',  auth.accessToken);
+                localStorage.setItem('podium_refresh_token', auth.refreshToken);
+                localStorage.setItem('podium_expires_at',    auth.expiresAt);
+          
+                updateAuthUI(true);
+                loadInitialData();
+                switchTab('dashboard');
+              } else {
+                console.error('Failed to exchange code for token:', data);
+                alert('Authentication failed. Please try again.');
+                updateAuthUI(false);
+              }
+            })
+            .catch(err => {
+              console.error('Error during token exchange:', err);
+              alert('Authentication failed. Please try again.');
+              updateAuthUI(false);
+            });
+          }
+          
             
             // Create API request body
             const requestBody = {
