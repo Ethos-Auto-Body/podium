@@ -651,10 +651,20 @@
 
         // Setup Event Listeners
         function setupEventListeners() {
-            // Auth buttons
-            elements.loginBtn.addEventListener('click', initiateOAuth);
-            elements.logoutBtn.addEventListener('click', logout);
+            if (elements.loginBtn) {
+                console.log("Login button found, adding event listener");
+                elements.loginBtn.addEventListener('click', function(e) {
+                    console.log("Login button clicked");
+                    e.preventDefault();
+                    initiateOAuth();
+                });
+            } else {
+                console.error("Login button not found in DOM");
+            }
             
+            if (elements.logoutBtn) {
+                elements.logoutBtn.addEventListener('click', logout);
+            }
             // Tab navigation
             elements.tabLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
@@ -1065,6 +1075,7 @@
 
         // OAuth Flow
         function initiateOAuth() {
+            alert("initiateOAuth called");
             console.log("Starting OAuth flow...");
             console.log("Client ID:", config.clientId);
             console.log("Redirect URI:", config.redirectUri);
@@ -1078,6 +1089,7 @@
             const scope = "read_locations write_campaigns read_campaigns write_templates read_templates write_contacts read_contacts write_messages read_messages";
             const authUrl = `${config.apiBase}/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(scope)}&state=podium_auth`;
             
+            alert("About to redirect to: " + authUrl);
             console.log("Redirecting to:", authUrl);
             window.location.href = authUrl;
         }
