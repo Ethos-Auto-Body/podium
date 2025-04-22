@@ -1,14 +1,26 @@
-import fetch from 'node-fetch';
-
 export default async (req) => {
-  if (req.method !== 'POST' && req.httpMethod !== 'POST') {
+  const method = req.method || req.httpMethod;
+
+  if (method !== 'POST') {
     return new Response(JSON.stringify({ error: 'POST only' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const { code, redirect_uri } = JSON.parse(req.body || '{}');
+  let code, redirect_uri;
+
+  try {
+    const body = JSON.parse(req.body || '{}');
+    code = body.code;
+    redirect_uri = body.redirect_uri;
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (!code) {
     return new Response(JSON.stringify({ error: 'Missing code' }), {
       status: 400,
@@ -30,6 +42,7 @@ export default async (req) => {
     });
 
     const data = await podiumRes.json();
+
     return new Response(JSON.stringify(data), {
       status: podiumRes.status,
       headers: { 'Content-Type': 'application/json' },
