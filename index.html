@@ -517,8 +517,8 @@
                                 <li class="mb-2">Create a new application in the developer portal</li>
                                 <li class="mb-2">When setting up your application, specify your redirect URI:
                                     <ul class="list-disc list-inside ml-4 mt-1">
-                                        <li>For local file, use the exact file URL (e.g., file:///path/to/podium_connect.html)</li>
-                                        <li>If using a local server, use http://localhost:port/podium_connect.html</li>
+                                        <li>For GitHub Pages, use <code class="bg-gray-100 px-2 py-1 rounded">https://ethos-auto-body.github.io/podium/</code></li>
+                                        <li>Make sure the trailing slash is included</li>
                                     </ul>
                                 </li>
                                 <li class="mb-2">Once approved, enter your Client ID and Client Secret above</li>
@@ -526,14 +526,13 @@
                                 <li class="mb-2">Return to the main page and click "Connect to Podium"</li>
                             </ol>
                             
-                            <h4 class="font-bold mt-4">Running with a Local Server</h4>
-                            <p>For better OAuth compatibility, you can serve this file using a simple HTTP server:</p>
-                            <ol class="list-decimal list-inside">
-                                <li class="mb-2">Install Python if you don't have it</li>
-                                <li class="mb-2">Open a command prompt in your app folder</li>
-                                <li class="mb-2">Run: <code class="bg-gray-100 px-2 py-1 rounded">python -m http.server 8000</code></li>
-                                <li class="mb-2">Access your app at: <code class="bg-gray-100 px-2 py-1 rounded">http://localhost:8000/podium_connect.html</code></li>
-                            </ol>
+                            <h4 class="font-bold mt-4">Troubleshooting</h4>
+                            <ul class="list-disc list-inside">
+                                <li class="mb-2">Make sure your redirect URI exactly matches what you've set in the Podium developer portal</li>
+                                <li class="mb-2">Ensure your OAuth scopes are correctly set (should include read_locations, write_campaigns, etc.)</li>
+                                <li class="mb-2">Check browser console for errors (F12 or right-click → Inspect → Console)</li>
+                                <li class="mb-2">Clear your browser cache if you're experiencing persistent issues</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -546,7 +545,7 @@
         const config = {
             clientId: localStorage.getItem('podium_client_id') || '',
             clientSecret: localStorage.getItem('podium_client_secret') || '',
-            redirectUri: localStorage.getItem('podium_redirect_uri') || window.location.origin,
+            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://ethos-auto-body.github.io/podium/',
             refreshInterval: parseInt(localStorage.getItem('podium_refresh_interval') || '0', 10),
             apiBase: 'https://api.podium.com'
         };
@@ -599,6 +598,9 @@
 
         // Initialize UI
         function init() {
+            console.log("Initializing application...");
+            console.log("Current config:", config);
+            
             // Load settings into form
             elements.clientIdInput.value = config.clientId;
             elements.clientSecretInput.value = config.clientSecret;
@@ -609,25 +611,33 @@
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             
+            console.log("Authorization code in URL:", code);
+            
             if (code) {
-                // Remove code from URL
+                console.log("Authorization code found, exchanging for token...");
+                // Remove code from URL to prevent issues with refreshing
                 window.history.replaceState({}, document.title, window.location.pathname);
                 // Exchange code for token
                 exchangeCodeForToken(code);
-            }
-            
-            // Check if we have a valid token
-            if (auth.accessToken && auth.expiresAt && new Date(auth.expiresAt) > new Date()) {
-                updateAuthUI(true);
-                loadInitialData();
-                // Switch to dashboard if authenticated
-                switchTab('dashboard');
-            } else if (auth.refreshToken) {
-                refreshAccessToken();
             } else {
-                updateAuthUI(false);
-                // If not authenticated, start on settings tab
-                switchTab('settings');
+                console.log("No authorization code found in URL");
+                
+                // Check if we have a valid token
+                if (auth.accessToken && auth.expiresAt && new Date(auth.expiresAt) > new Date()) {
+                    console.log("Valid access token found, updating UI...");
+                    updateAuthUI(true);
+                    loadInitialData();
+                    // Switch to dashboard if authenticated
+                    switchTab('dashboard');
+                } else if (auth.refreshToken) {
+                    console.log("Access token expired, attempting to refresh...");
+                    refreshAccessToken();
+                } else {
+                    console.log("No valid tokens found, showing unauthenticated UI");
+                    updateAuthUI(false);
+                    // If not authenticated, start on settings tab
+                    switchTab('settings');
+                }
             }
             
             // Setup event listeners
@@ -659,16 +669,16 @@
             elements.saveAppSettingsBtn.addEventListener('click', saveAppSettings);
             
             // Campaign modal
-            elements.newCampaignBtn.addEventListener('click', () => openModal('campaign'));
-            elements.campaignForm.addEventListener('submit', handleCampaignSubmit);
+            elements.newCampaignBtn?.addEventListener('click', () => openModal('campaign'));
+            elements.campaignForm?.addEventListener('submit', handleCampaignSubmit);
             
             // Template modal
-            elements.newTemplateBtn.addEventListener('click', () => openModal('template'));
-            elements.templateForm.addEventListener('submit', handleTemplateSubmit);
+            elements.newTemplateBtn?.addEventListener('click', () => openModal('template'));
+            elements.templateForm?.addEventListener('submit', handleTemplateSubmit);
             
             // Contact modal
-            elements.newContactBtn.addEventListener('click', () => openModal('contact'));
-            elements.contactForm.addEventListener('submit', handleContactSubmit);
+            elements.newContactBtn?.addEventListener('click', () => openModal('contact'));
+            elements.contactForm?.addEventListener('submit', handleContactSubmit);
             
             // Close modals
             document.querySelectorAll('.modal-close').forEach(btn => {
@@ -784,9 +794,11 @@
 
         // Load locations for dropdowns
         function loadLocations(formType) {
-            // This would make an API request to get locations
+            console.log(`Loading locations for ${formType}...`);
+            // This makes an API request to get locations
             apiRequest('/v4/locations', 'GET')
                 .then(response => {
+                    console.log('Locations loaded:', response);
                     const locations = response.data;
                     const select = document.getElementById(`${formType}-locations`);
                     
@@ -1053,34 +1065,52 @@
 
         // OAuth Flow
         function initiateOAuth() {
+            console.log("Starting OAuth flow...");
+            console.log("Client ID:", config.clientId);
+            console.log("Redirect URI:", config.redirectUri);
+            
             if (!config.clientId || !config.redirectUri) {
                 alert('Please configure OAuth settings first.');
                 switchTab('settings');
                 return;
             }
             
-            const authUrl = `${config.apiBase}/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=read_locations%20write_campaigns%20read_campaigns%20write_templates%20read_templates%20write_contacts%20read_contacts%20write_messages%20read_messages&state=podium_auth`;
+            const scope = "read_locations write_campaigns read_campaigns write_templates read_templates write_contacts read_contacts write_messages read_messages";
+            const authUrl = `${config.apiBase}/oauth/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(scope)}&state=podium_auth`;
             
+            console.log("Redirecting to:", authUrl);
             window.location.href = authUrl;
         }
 
         // Exchange code for token
         function exchangeCodeForToken(code) {
+            console.log("Exchanging authorization code for access token...");
+            
+            // Create API request body
+            const requestBody = {
+                code: code,
+                redirect_uri: config.redirectUri,
+                client_id: config.clientId,
+                client_secret: config.clientSecret,
+                grant_type: 'authorization_code'
+            };
+            
+            console.log("Token exchange request:", requestBody);
+            
             fetch(`${config.apiBase}/oauth/token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    code: code,
-                    redirect_uri: config.redirectUri,
-                    client_id: config.clientId,
-                    client_secret: config.clientSecret,
-                    grant_type: 'authorization_code'
-                })
+                body: JSON.stringify(requestBody)
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log("Token exchange response status:", response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log("Token exchange response:", data);
+                
                 if (data.access_token) {
                     // Calculate expiry (default to 10 hours from now if not provided)
                     const expiresIn = data.expires_in || 36000;
@@ -1097,8 +1127,10 @@
                     localStorage.setItem('podium_refresh_token', auth.refreshToken);
                     localStorage.setItem('podium_expires_at', auth.expiresAt);
                     
+                    console.log("Authentication successful, updating UI...");
                     updateAuthUI(true);
                     loadInitialData();
+                    switchTab('dashboard');
                 } else {
                     console.error('Failed to exchange code for token:', data);
                     alert('Authentication failed. Please try again.');
@@ -1114,6 +1146,8 @@
 
         // Refresh Access Token
         function refreshAccessToken() {
+            console.log("Refreshing access token...");
+            
             fetch(`${config.apiBase}/oauth/token`, {
                 method: 'POST',
                 headers: {
@@ -1144,21 +1178,26 @@
                     localStorage.setItem('podium_refresh_token', auth.refreshToken);
                     localStorage.setItem('podium_expires_at', auth.expiresAt);
                     
+                    console.log("Token refresh successful, updating UI...");
                     updateAuthUI(true);
                     loadInitialData();
+                    switchTab('dashboard');
                 } else {
                     console.error('Failed to refresh token:', data);
+                    alert('Your session has expired. Please log in again.');
                     updateAuthUI(false);
                 }
             })
             .catch(error => {
                 console.error('Error during token refresh:', error);
+                alert('Your session has expired. Please log in again.');
                 updateAuthUI(false);
             });
         }
 
         // Logout
         function logout() {
+            console.log("Logging out...");
             // Clear auth data
             auth = {
                 accessToken: null,
@@ -1171,6 +1210,7 @@
             localStorage.removeItem('podium_expires_at');
             
             updateAuthUI(false);
+            switchTab('settings');
         }
 
         // Update UI based on auth state
@@ -1201,41 +1241,72 @@
 
         // API Request Helper
         async function apiRequest(endpoint, method = 'GET', body = null) {
-            // Check if token is expired
-            if (auth.expiresAt && new Date(auth.expiresAt) <= new Date()) {
-                // Token is expired, try to refresh
-                if (auth.refreshToken) {
-                    await refreshAccessToken();
-                } else {
-                    throw new Error('Session expired. Please log in again.');
+            console.log(`Making API request: ${method} ${endpoint}`);
+            
+            try {
+                // Check if token is expired
+                if (auth.expiresAt && new Date(auth.expiresAt) <= new Date()) {
+                    console.log("Token expired, attempting to refresh...");
+                    // Token is expired, try to refresh
+                    if (auth.refreshToken) {
+                        await refreshAccessToken();
+                    } else {
+                        throw new Error('Session expired. Please log in again.');
+                    }
                 }
-            }
-            
-            // Make the request
-            const options = {
-                method: method,
-                headers: {
-                    'Authorization': `Bearer ${auth.accessToken}`,
-                    'Content-Type': 'application/json'
+                
+                // Make the request
+                const options = {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${auth.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
                 }
-            };
-            
-            if (body) {
-                options.body = JSON.stringify(body);
+                
+                console.log(`Request options:`, options);
+                const response = await fetch(`${config.apiBase}${endpoint}`, options);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`API error (${response.status}):`, errorText);
+                    
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { message: errorText || `HTTP error ${response.status}` };
+                    }
+                    
+                    throw new Error(errorData.message || 'API request failed');
+                }
+                
+                const data = await response.json();
+                console.log(`API response:`, data);
+                return data;
+            } catch (error) {
+                console.error('API Request Error:', error);
+                
+                // Handle authentication errors
+                if (error.message.includes('authentication') || 
+                    error.message.includes('token') || 
+                    error.message.includes('unauthorized') ||
+                    error.message.includes('expired')) {
+                    alert('Your session has expired. Please log in again.');
+                    logout();
+                }
+                
+                throw error;
             }
-            
-            const response = await fetch(`${config.apiBase}${endpoint}`, options);
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'API request failed');
-            }
-            
-            return response.json();
         }
 
         // Load Initial Data
         function loadInitialData() {
+            console.log("Loading initial data...");
             // Load dashboard data
             loadDashboardData();
             
@@ -1447,7 +1518,9 @@
 
         // Helper Functions
         function escapeHtml(unsafe) {
+            if (!unsafe) return '';
             return unsafe
+                .toString()
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
