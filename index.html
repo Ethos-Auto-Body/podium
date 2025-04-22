@@ -1091,7 +1091,19 @@
             
             alert("About to redirect to: " + authUrl);
             console.log("Redirecting to:", authUrl);
-            window.location.href = authUrl;
+            try {
+                console.log("Attempting to redirect...");
+                setTimeout(function() {
+                  window.location.replace(authUrl);
+                }, 500);
+              } catch (e) {
+                console.error("Redirect error:", e);
+                alert("Redirect failed: " + e.message);
+                
+                // Try alternative method
+                console.log("Trying alternative method...");
+                window.open(authUrl, "_self");
+              }
         }
 
         // Exchange code for token
