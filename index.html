@@ -10,6 +10,27 @@
         .hidden {
             display: none;
         }
+        
+        .tab-pane {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .active-tab div {
+            border-bottom-width: 2px;
+            border-color: #3B82F6;
+            color: #2563EB;
+        }
+        
+        .tab-link:not(.active-tab) div {
+            border-bottom-width: 2px;
+            border-color: transparent;
+            color: #6B7280;
+        }
+        
+        .tab-link:not(.active-tab):hover div {
+            border-color: #D1D5DB;
+            color: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -43,7 +64,7 @@
             <p class="mt-2">To get started, go to the <strong>Settings</strong> tab below to configure your OAuth credentials.</p>
         </div>
 
-        <!-- Main Content (Only dashboard hidden until authenticated) -->
+        <!-- Main Content -->
         <div id="main-content">
             <!-- Navigation Tabs -->
             <div class="border-b border-gray-200 mb-6">
@@ -545,7 +566,7 @@
         const config = {
             clientId: localStorage.getItem('podium_client_id') || '',
             clientSecret: localStorage.getItem('podium_client_secret') || '',
-            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://ethos-auto-body.github.io/podium/',
+            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://podiumdev.netlify.app',
             refreshInterval: parseInt(localStorage.getItem('podium_refresh_interval') || '0', 10),
             apiBase: 'https://api.podium.com'
         };
@@ -637,8 +658,7 @@
                     updateAuthUI(false);
                     // If not authenticated, start on settings tab
                     switchTab('settings');
-                // Ensure this closing brace corresponds to an opening brace
-                // If it is misplaced, check the surrounding code structure.
+                }
             }
             
             // Setup event listeners
@@ -659,8 +679,6 @@
                     e.preventDefault();
                     initiateOAuth();
                 });
-            } else {
-                console.error("Login button not found in DOM");
             }
             
             if (elements.logoutBtn) {
@@ -743,9 +761,11 @@
                 if (linkTarget === targetId) {
                     div.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
                     div.classList.add('border-blue-500', 'text-blue-600');
+                    link.classList.add('active-tab');
                 } else {
                     div.classList.remove('border-blue-500', 'text-blue-600');
                     div.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    link.classList.remove('active-tab');
                 }
             });
             
@@ -757,6 +777,9 @@
                     pane.classList.add('hidden');
                 }
             });
+            
+            // Update URL hash to allow for direct navigation
+            window.location.hash = targetId;
         }
 
         // Save OAuth Settings
@@ -1076,7 +1099,6 @@
 
         // OAuth Flow
         function initiateOAuth() {
-            alert("initiateOAuth called");
             console.log("Starting OAuth flow...");
             console.log("Client ID:", config.clientId);
             console.log("Redirect URI:", config.redirectUri);
@@ -1089,13 +1111,12 @@
             
             const scope = "read_locations write_campaigns read_campaigns write_templates read_templates write_contacts read_contacts write_messages read_messages";
             const authUrl = `${config.apiBase}/oauth/authorize` +
-              `?response_type=code` +                                // NEW
+              `?response_type=code` +
               `&client_id=${config.clientId}` +
               `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
               `&scope=${encodeURIComponent(scope)}` +
               `&state=podium_auth`;
             
-            alert("About to redirect to: " + authUrl);
             console.log("Redirecting to:", authUrl);
             try {
                 console.log("Attempting to redirect...");
@@ -1155,65 +1176,6 @@
               console.error('Error during token exchange:', err);
               alert('Authentication failed. Please try again.');
               updateAuthUI(false);
-            });
-          }
-          
-            
-            // Create API request body
-            const requestBody = {
-                code: code,
-                redirect_uri: config.redirectUri,
-                client_id: config.clientId,
-                client_secret: config.clientSecret,
-                grant_type: 'authorization_code'
-            };
-            
-            console.log("Token exchange request:", requestBody);
-            
-            fetch(`${config.apiBase}/oauth/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            })
-            .then(response => {
-                console.log("Token exchange response status:", response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log("Token exchange response:", data);
-                
-                if (data.access_token) {
-                    // Calculate expiry (default to 10 hours from now if not provided)
-                    const expiresIn = data.expires_in || 36000;
-                    const expiresAt = new Date(new Date().getTime() + expiresIn * 1000).toISOString();
-                    
-                    // Store tokens
-                    auth = {
-                        accessToken: data.access_token,
-                        refreshToken: data.refresh_token,
-                        expiresAt: expiresAt
-                    };
-                    
-                    localStorage.setItem('podium_access_token', auth.accessToken);
-                    localStorage.setItem('podium_refresh_token', auth.refreshToken);
-                    localStorage.setItem('podium_expires_at', auth.expiresAt);
-                    
-                    console.log("Authentication successful, updating UI...");
-                    updateAuthUI(true);
-                    loadInitialData();
-                    switchTab('dashboard');
-                } else {
-                    console.error('Failed to exchange code for token:', data);
-                    alert('Authentication failed. Please try again.');
-                    updateAuthUI(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error during token exchange:', error);
-                alert('Authentication failed. Please try again.');
-                updateAuthUI(false);
             });
         }
 
@@ -1285,359 +1247,3 @@
             updateAuthUI(false);
             switchTab('settings');
         }
-
-        // Update UI based on auth state
-        function updateAuthUI(isLoggedIn) {
-            if (isLoggedIn) {
-                elements.loggedOut.classList.add('hidden');
-                elements.loggedIn.classList.remove('hidden');
-                elements.authRequired.classList.add('hidden');
-                // We don't hide mainContent anymore as settings is always visible
-                // Only hide specific tabs that require auth
-                document.getElementById('dashboard-tab').classList.remove('hidden');
-                document.getElementById('campaigns-tab').classList.remove('hidden');
-                document.getElementById('templates-tab').classList.remove('hidden');
-                document.getElementById('contacts-tab').classList.remove('hidden');
-                elements.userInfo.textContent = 'Authenticated with Podium';
-            } else {
-                elements.loggedOut.classList.remove('hidden');
-                elements.loggedIn.classList.add('hidden');
-                elements.authRequired.classList.remove('hidden');
-                // Hide tabs that require auth
-                document.getElementById('dashboard-tab').classList.add('hidden');
-                document.getElementById('campaigns-tab').classList.add('hidden');
-                document.getElementById('templates-tab').classList.add('hidden');
-                document.getElementById('contacts-tab').classList.add('hidden');
-                elements.userInfo.textContent = '';
-            }
-        }
-
-        // API Request Helper
-        async function apiRequest(endpoint, method = 'GET', body = null) {
-            console.log(`Making API request: ${method} ${endpoint}`);
-            
-            try {
-                // Check if token is expired
-                if (auth.expiresAt && new Date(auth.expiresAt) <= new Date()) {
-                    console.log("Token expired, attempting to refresh...");
-                    // Token is expired, try to refresh
-                    if (auth.refreshToken) {
-                        await refreshAccessToken();
-                    } else {
-                        throw new Error('Session expired. Please log in again.');
-                    }
-                }
-                
-                // Make the request
-                const options = {
-                    method: method,
-                    headers: {
-                        'Authorization': `Bearer ${auth.accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                };
-                
-                if (body) {
-                    options.body = JSON.stringify(body);
-                }
-                
-                console.log(`Request options:`, options);
-                const response = await fetch(`${config.apiBase}${endpoint}`, options);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`API error (${response.status}):`, errorText);
-                    
-                    let errorData;
-                    try {
-                        errorData = JSON.parse(errorText);
-                    } catch (e) {
-                        errorData = { message: errorText || `HTTP error ${response.status}` };
-                    }
-                    
-                    throw new Error(errorData.message || 'API request failed');
-                }
-                
-                const data = await response.json();
-                console.log(`API response:`, data);
-                return data;
-            } catch (error) {
-                console.error('API Request Error:', error);
-                
-                // Handle authentication errors
-                if (error.message.includes('authentication') || 
-                    error.message.includes('token') || 
-                    error.message.includes('unauthorized') ||
-                    error.message.includes('expired')) {
-                    alert('Your session has expired. Please log in again.');
-                    logout();
-                }
-                
-                throw error;
-            }
-        }
-
-        // Load Initial Data
-        function loadInitialData() {
-            console.log("Loading initial data...");
-            // Load dashboard data
-            loadDashboardData();
-            
-            // Load data for other tabs
-            loadCampaigns();
-            loadTemplates();
-            loadContacts();
-        }
-
-        // Refresh Data
-        function refreshData() {
-            if (auth.accessToken) {
-                loadInitialData();
-            }
-        }
-
-        // Load Dashboard Data
-        function loadDashboardData() {
-            // Load active campaigns count
-            apiRequest('/v4/campaigns?status=ACTIVE')
-                .then(response => {
-                    document.getElementById('active-campaigns-count').textContent = response.data.length;
-                    document.getElementById('last-updated-campaigns').textContent = new Date().toLocaleTimeString();
-                })
-                .catch(error => {
-                    console.error('Error loading active campaigns:', error);
-                });
-            
-            // Note: These endpoints might not exist exactly as shown
-            // You would need to adapt to what's available in the Podium API
-            
-            // Load recent activity
-            apiRequest('/v4/campaign_interactions?limit=10')
-                .then(response => {
-                    const activityTableBody = document.getElementById('activity-table-body');
-                    activityTableBody.innerHTML = '';
-                    
-                    if (response.data.length === 0) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">
-                                No recent activity found
-                            </td>
-                        `;
-                        activityTableBody.appendChild(tr);
-                        return;
-                    }
-                    
-                    response.data.forEach(interaction => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${new Date(interaction.createdAt).toLocaleString()}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${formatInteractionType(interaction.interactionType)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${interaction.campaign ? `Campaign: ${interaction.campaign.uid.substring(0, 8)}...` : 'N/A'}
-                            </td>
-                        `;
-                        activityTableBody.appendChild(tr);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading recent activity:', error);
-                });
-        }
-
-        // Load Campaigns
-        function loadCampaigns() {
-            apiRequest('/v4/campaigns')
-                .then(response => {
-                    const campaignsTableBody = document.getElementById('campaigns-table-body');
-                    campaignsTableBody.innerHTML = '';
-                    
-                    if (response.data.length === 0) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No campaigns found
-                            </td>
-                        `;
-                        campaignsTableBody.appendChild(tr);
-                        return;
-                    }
-                    
-                    response.data.forEach(campaign => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${escapeHtml(campaign.name)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(campaign.status)}">
-                                    ${campaign.status}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${formatDate(campaign.createdAt)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${campaign.locations ? campaign.locations.length : 0} locations
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                <button class="text-red-600 hover:text-red-900">Delete</button>
-                            </td>
-                        `;
-                        campaignsTableBody.appendChild(tr);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading campaigns:', error);
-                });
-        }
-
-        // Load Templates
-        function loadTemplates() {
-            apiRequest('/v4/templates')
-                .then(response => {
-                    const templatesTableBody = document.getElementById('templates-table-body');
-                    templatesTableBody.innerHTML = '';
-                    
-                    if (response.data.length === 0) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No templates found
-                            </td>
-                        `;
-                        templatesTableBody.appendChild(tr);
-                        return;
-                    }
-                    
-                    response.data.forEach(template => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${escapeHtml(template.title)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${template.type}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${formatDate(template.createdAt)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${template.lastUsedAt ? formatDate(template.lastUsedAt) : 'Never'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                <button class="text-red-600 hover:text-red-900">Delete</button>
-                            </td>
-                        `;
-                        templatesTableBody.appendChild(tr);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading templates:', error);
-                });
-        }
-
-        // Load Contacts
-        function loadContacts() {
-            apiRequest('/v4/contacts?limit=20')
-                .then(response => {
-                    const contactsTableBody = document.getElementById('contacts-table-body');
-                    contactsTableBody.innerHTML = '';
-                    
-                    if (response.data.length === 0) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No contacts found
-                            </td>
-                        `;
-                        contactsTableBody.appendChild(tr);
-                        return;
-                    }
-                    
-                    response.data.forEach(contact => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${escapeHtml(contact.name)}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${contact.phoneNumbers && contact.phoneNumbers.length ? contact.phoneNumbers[0] : 'N/A'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${contact.emails && contact.emails.length ? contact.emails[0] : 'N/A'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                ${contact.tags && contact.tags.length ? contact.tags.map(tag => `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${escapeHtml(tag.label)}</span>`).join(' ') : 'No tags'}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <button class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                <button class="text-red-600 hover:text-red-900">Delete</button>
-                            </td>
-                        `;
-                        contactsTableBody.appendChild(tr);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading contacts:', error);
-                });
-        }
-
-        // Helper Functions
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .toString()
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString();
-        }
-
-        function getStatusClass(status) {
-            switch (status) {
-                case 'ACTIVE':
-                    return 'bg-green-100 text-green-800';
-                case 'DRAFT':
-                    return 'bg-yellow-100 text-yellow-800';
-                case 'COMPLETED':
-                    return 'bg-blue-100 text-blue-800';
-                case 'STOPPED':
-                case 'ERROR':
-                    return 'bg-red-100 text-red-800';
-                default:
-                    return 'bg-gray-100 text-gray-800';
-            }
-        }
-
-        function formatInteractionType(type) {
-            switch (type) {
-                case 'sent':
-                    return 'Message Sent';
-                case 'response':
-                    return 'Response Received';
-                case 'feedback_left':
-                    return 'Feedback Left';
-                case 'review_left':
-                    return 'Review Left';
-                default:
-                    return type.replace('_', ' ').charAt(0).toUpperCase() + type.slice(1);
-            }
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>
