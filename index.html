@@ -562,11 +562,19 @@
     </div>
 
     <script>
+        // Debug function for settings
+        function debugSettings() {
+            console.log("Current settings:");
+            console.log("Client ID:", localStorage.getItem('podium_client_id'));
+            console.log("Redirect URI:", localStorage.getItem('podium_redirect_uri'));
+            console.log("Refresh Interval:", localStorage.getItem('podium_refresh_interval'));
+        }
+        
         // OAuth Configuration Storage
         const config = {
             clientId: localStorage.getItem('podium_client_id') || '',
             clientSecret: localStorage.getItem('podium_client_secret') || '',
-            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://podiumdev.netlify.app',
+            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://ethos-auto-body.github.io/podium/',
             refreshInterval: parseInt(localStorage.getItem('podium_refresh_interval') || '0', 10),
             apiBase: 'https://api.podium.com'
         };
@@ -578,44 +586,8 @@
             expiresAt: localStorage.getItem('podium_expires_at') || null
         };
 
-        // DOM Elements
-        const elements = {
-            loginBtn: document.getElementById('login-btn'),
-            logoutBtn: document.getElementById('logout-btn'),
-            loggedOut: document.getElementById('logged-out'),
-            loggedIn: document.getElementById('logged-in'),
-            userInfo: document.getElementById('user-info'),
-            authRequired: document.getElementById('auth-required'),
-            mainContent: document.getElementById('main-content'),
-            tabLinks: document.querySelectorAll('.tab-link'),
-            tabPanes: document.querySelectorAll('.tab-pane'),
-            
-            // Settings inputs
-            clientIdInput: document.getElementById('client-id'),
-            clientSecretInput: document.getElementById('client-secret'),
-            redirectUriInput: document.getElementById('redirect-uri'),
-            refreshIntervalSelect: document.getElementById('refresh-interval'),
-            saveOAuthBtn: document.getElementById('save-oauth-settings'),
-            saveAppSettingsBtn: document.getElementById('save-app-settings'),
-            
-            // Campaign elements
-            newCampaignBtn: document.getElementById('new-campaign-btn'),
-            campaignModal: document.getElementById('campaign-modal'),
-            campaignForm: document.getElementById('campaign-form'),
-            campaignTableBody: document.getElementById('campaigns-table-body'),
-            
-            // Template elements
-            newTemplateBtn: document.getElementById('new-template-btn'),
-            templateModal: document.getElementById('template-modal'),
-            templateForm: document.getElementById('template-form'),
-            templatesTableBody: document.getElementById('templates-table-body'),
-            
-            // Contact elements
-            newContactBtn: document.getElementById('new-contact-btn'),
-            contactModal: document.getElementById('contact-modal'),
-            contactForm: document.getElementById('contact-form'),
-            contactsTableBody: document.getElementById('contacts-table-body')
-        };
+        // DOM Elements container
+        const elements = {};
 
         // Initialize UI
         function init() {
@@ -784,15 +756,32 @@
 
         // Save OAuth Settings
         function saveOAuthSettings() {
-            config.clientId = elements.clientIdInput.value;
-            config.clientSecret = elements.clientSecretInput.value;
-            config.redirectUri = elements.redirectUriInput.value;
+            // Get values from the form
+            config.clientId = elements.clientIdInput.value.trim();
+            config.clientSecret = elements.clientSecretInput.value.trim();
+            config.redirectUri = elements.redirectUriInput.value.trim();
             
+            // Save to localStorage
             localStorage.setItem('podium_client_id', config.clientId);
             localStorage.setItem('podium_client_secret', config.clientSecret);
             localStorage.setItem('podium_redirect_uri', config.redirectUri);
             
-            alert('OAuth settings saved!');
+            console.log("OAuth settings saved:", {
+                clientId: config.clientId,
+                redirectUri: config.redirectUri
+                // Not logging clientSecret for security
+            });
+            
+            // Show confirmation to user
+            alert('OAuth settings saved successfully!');
+            
+            // Update UI if needed
+            if (auth.accessToken) {
+                // If already authenticated, no need to change UI
+            } else {
+                // Update login button status if credentials are ready
+                elements.loginBtn.disabled = !(config.clientId && config.redirectUri);
+            }
         }
 
         // Save App Settings
