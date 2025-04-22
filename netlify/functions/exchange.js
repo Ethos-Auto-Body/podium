@@ -1,19 +1,19 @@
 import fetch from 'node-fetch';
 
 export default async (req) => {
-  if (req.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'POST only' })
-    };
+  if (req.method !== 'POST' && req.httpMethod !== 'POST') {
+    return new Response(JSON.stringify({ error: 'POST only' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const { code, redirect_uri } = JSON.parse(req.body || '{}');
   if (!code) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Missing code' })
-    };
+    return new Response(JSON.stringify({ error: 'Missing code' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -25,20 +25,22 @@ export default async (req) => {
         client_secret: process.env.PODIUM_CLIENT_SECRET,
         redirect_uri,
         grant_type: 'authorization_code',
-        code
-      })
+        code,
+      }),
     });
 
     const data = await podiumRes.json();
-
-    return {
-      statusCode: podiumRes.status,
-      body: JSON.stringify(data)
-    };
+    return new Response(JSON.stringify(data), {
+      status: podiumRes.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Server error', message: err.message })
-    };
+    return new Response(JSON.stringify({
+      error: 'Server error',
+      message: err.message,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 };
