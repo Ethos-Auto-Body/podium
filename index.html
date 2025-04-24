@@ -1,1331 +1,1077 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Podium Automation Manager</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        .hidden {
-            display: none;
-        }
-        
-        .tab-pane {
-            transition: opacity 0.3s ease-in-out;
-        }
-        
-        .active-tab div {
-            border-bottom-width: 2px;
-            border-color: #3B82F6;
-            color: #2563EB;
-        }
-        
-        .tab-link:not(.active-tab) div {
-            border-bottom-width: 2px;
-            border-color: transparent;
-            color: #6B7280;
-        }
-        
-        .tab-link:not(.active-tab):hover div {
-            border-color: #D1D5DB;
-            color: #374151;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E.A.B Developer Portal</title>
+  <!-- Tailwind & Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+  <style>
+    :root {
+      --netlify-primary: #00ad9f;
+      --netlify-primary-dark: #008e83;
+      --netlify-secondary: #2d3748;
+      --netlify-sidebar: #1a202c;
+      --netlify-sidebar-hover: #2d3748;
+      --netlify-text: #f7fafc;
+      --netlify-border: #e2e8f0;
+      --netlify-focus: rgba(0, 173, 159, 0.5);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+                   Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    /* Transitions */
+    .transition-all { transition: all .2s ease-in-out; }
+    .transition-height { transition: max-height .3s ease-in-out; overflow: hidden; }
+
+    /* Navigation */
+    .nav-item {
+      border-left: 4px solid transparent;
+      transition: all .2s ease;
+    }
+    .nav-item-active {
+      border-left-color: var(--netlify-primary);
+      background-color: var(--netlify-sidebar-hover);
+      color: #fff;
+    }
+    .nav-item:hover:not(.nav-item-active) {
+      background-color: var(--netlify-sidebar-hover);
+      border-left-color: rgba(0,173,159,0.5);
+    }
+
+    /* Tooltip */
+    .tooltip { position: relative; display: inline-block; }
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: var(--netlify-secondary);
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity .3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+    /* Loader */
+    .loader {
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--netlify-primary);
+      border-radius: 50%;
+      width: 2.5rem; height: 2.5rem;
+      animation: spinner 1.5s linear infinite;
+    }
+    @keyframes spinner {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; top: 1.25rem; right: 1.25rem;
+      padding: 1rem; border-radius: .25rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transform: translateX(120%); transition: transform .3s ease-out;
+      z-index: 9999;
+    }
+    .toast-show { transform: translateX(0); }
+    .toast-success { background: var(--netlify-primary); color: #fff; }
+    .toast-error   { background: #F56565; color: #fff; }
+
+    /* Forms & Buttons */
+    .form-input {
+      border: 1px solid #cbd5e0; border-radius: .375rem;
+      padding: .5rem .75rem;
+      transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+    .form-input:focus {
+      outline: none; border-color: var(--netlify-primary);
+      box-shadow: 0 0 0 3px var(--netlify-focus);
+    }
+    .btn-primary {
+      background: var(--netlify-primary); color: #fff;
+      padding: .5rem 1rem; border-radius: .375rem;
+      transition: background .2s ease;
+    }
+    .btn-primary:hover {
+      background: var(--netlify-primary-dark);
+    }
+    .btn-secondary {
+      background: #fff; color: #4a5568;
+      border: 1px solid #e2e8f0; padding: .5rem 1rem;
+      border-radius: .375rem; transition: background .2s ease, border-color .2s ease;
+    }
+    .btn-secondary:hover {
+      background: #f7fafc; border-color: #cbd5e0;
+    }
+
+    /* Checkbox */
+    .custom-checkbox {
+      appearance: none; -webkit-appearance: none;
+      width: 1.125rem; height: 1.125rem;
+      border: 2px solid #cbd5e0; border-radius: .25rem;
+      position: relative; cursor: pointer;
+      transition: all .2s ease;
+    }
+    .custom-checkbox:checked {
+      background: var(--netlify-primary); border-color: var(--netlify-primary);
+    }
+    .custom-checkbox:checked::after {
+      content: "";
+      position: absolute; left: 4px; top: 2px;
+      width: 6px; height: 10px;
+      border: solid #fff; border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    /* Cards & Badges */
+    .netlify-card {
+      background: #fff; border-radius: .5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      transition: box-shadow .3s ease, transform .3s ease;
+    }
+    .netlify-card:hover {
+      box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .netlify-badge {
+      display: inline-flex; align-items: center;
+      padding: .25rem .75rem; border-radius: 9999px;
+      font-size: .75rem; font-weight: 500;
+      background: rgba(0,173,159,0.1); color: var(--netlify-primary);
+      margin: .25rem .5rem .25rem 0;
+    }
+    .netlify-badge button {
+      margin-left: .25rem; background: none; border: none;
+      font-weight: 700; cursor: pointer; color: var(--netlify-primary);
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
-        <!-- Header -->
-        <header class="mb-8">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold text-blue-600">Podium Automation Manager</h1>
-                    <p class="text-gray-600">Manage your Podium text campaigns and automations</p>
-                </div>
-                <div id="auth-status" class="text-right">
-                    <div id="logged-out" class="">
-                        <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            Connect to Podium
-                        </button>
-                    </div>
-                    <div id="logged-in" class="hidden">
-                        <span id="user-info" class="block mb-2 text-sm text-gray-600"></span>
-                        <button id="logout-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-3 rounded text-sm">
-                            Disconnect
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
 
-        <!-- Auth Required Message -->
-        <div id="auth-required" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-8">
-            <p>Please connect to your Podium account to manage your automations.</p>
-            <p class="mt-2">To get started, go to the <strong>Settings</strong> tab below to configure your OAuth credentials.</p>
+<body class="flex flex-col h-screen overflow-hidden bg-gray-100">
+  <!-- Toast -->
+  <div id="toast" class="toast"><i id="toast-icon" class="mr-2"></i><span id="toast-message"></span></div>
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm z-10">
+    <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex items-center space-x-2">
+          <div class="h-10 w-10 rounded-md flex items-center justify-center text-white text-2xl font-bold"
+               style="background: var(--netlify-primary);">E</div>
+          <span class="text-2xl font-bold text-gray-800">E.A.B<span class="font-normal text-gray-600">Developer</span></span>
         </div>
-
-        <!-- Main Content -->
-        <div id="main-content">
-            <!-- Navigation Tabs -->
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="-mb-px flex">
-                    <a href="#" class="tab-link" data-target="dashboard">
-                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
-                            Dashboard
-                        </div>
-                    </a>
-                    <a href="#" class="tab-link" data-target="campaigns">
-                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
-                            Campaigns
-                        </div>
-                    </a>
-                    <a href="#" class="tab-link" data-target="templates">
-                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
-                            Templates
-                        </div>
-                    </a>
-                    <a href="#" class="tab-link" data-target="contacts">
-                        <div class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
-                            Contacts
-                        </div>
-                    </a>
-                    <a href="#" class="tab-link active-tab" data-target="settings">
-                        <div class="border-blue-500 text-blue-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
-                            Settings
-                        </div>
-                    </a>
-                </nav>
-            </div>
-
-            <!-- Tab Content -->
-            <div class="tab-content">
-                <!-- Dashboard Tab -->
-                <div id="dashboard-tab" class="tab-pane hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-lg shadow-md">
-                            <h3 class="text-lg font-bold mb-2">Active Campaigns</h3>
-                            <p class="text-3xl font-bold text-blue-600" id="active-campaigns-count">-</p>
-                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-campaigns">-</span></p>
-                        </div>
-                        <div class="bg-white p-6 rounded-lg shadow-md">
-                            <h3 class="text-lg font-bold mb-2">Messages Sent (30d)</h3>
-                            <p class="text-3xl font-bold text-blue-600" id="messages-sent-count">-</p>
-                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-messages">-</span></p>
-                        </div>
-                        <div class="bg-white p-6 rounded-lg shadow-md">
-                            <h3 class="text-lg font-bold mb-2">Response Rate</h3>
-                            <p class="text-3xl font-bold text-blue-600" id="response-rate">-</p>
-                            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="last-updated-rate">-</span></p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                        <h3 class="text-lg font-bold mb-4">Recent Activity</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Date
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Activity
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Details
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200" id="activity-table-body">
-                                    <tr>
-                                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">
-                                            Connect to Podium to view recent activity
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Campaigns Tab -->
-                <div id="campaigns-tab" class="tab-pane hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold">Text Campaigns</h2>
-                        <button id="new-campaign-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            New Campaign
-                        </button>
-                    </div>
-
-                    <!-- Excel Import UI -->
-                    <div class="mb-6">
-                        <div class="bg-white rounded-lg shadow-md p-6">
-                            <h3 class="text-lg font-bold mb-4">Import Contacts from Excel</h3>
-                            <p class="text-gray-600 mb-4">Upload an Excel file with contact information to create a new campaign.</p>
-                            
-                            <div class="mb-4">
-                                <label for="excel-file" class="block text-sm font-medium text-gray-700 mb-2">Excel File</label>
-                                <input type="file" id="excel-file" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-md file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-blue-50 file:text-blue-700
-                                    hover:file:bg-blue-100
-                                "/>
-                                <p class="text-xs text-gray-500 mt-1">The file should have columns for 'name' and 'phoneNumber'</p>
-                            </div>
-                            
-                            <button id="import-excel-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                Import Contacts
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="campaign-from-excel" class="hidden">
-                        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                            <h3 class="text-lg font-bold mb-4">Create Campaign from Imported Contacts</h3>
-                            
-                            <div class="mb-4">
-                                <label for="imported-campaign-name" class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
-                                <input type="text" id="imported-campaign-name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <label for="imported-campaign-message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                                <textarea id="imported-campaign-message" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
-                                <p class="text-sm text-gray-500 mt-1">Character count: <span id="imported-message-char-count">0</span>/160</p>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <label for="imported-campaign-locations" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                <select id="imported-campaign-locations" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                    <option value="" disabled selected>Select a location</option>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-6">
-                                <h4 class="font-medium text-gray-700 mb-2">Imported Contacts</h4>
-                                <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50 sticky top-0">
-                                            <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Include</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="imported-contacts-table" class="bg-white divide-y divide-gray-200">
-                                            <!-- Contacts will be added here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <div class="flex justify-end">
-                                <button id="send-imported-campaign-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                                    Send Campaign
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Name
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Created
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Stats
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="campaigns-table-body">
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                        Connect to Podium to view campaigns
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- New Campaign Modal -->
-                    <div id="campaign-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold" id="campaign-modal-title">New Campaign</h3>
-                                <button class="modal-close text-gray-500 hover:text-gray-700">
-                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <form id="campaign-form">
-                                <div class="mb-4">
-                                    <label for="campaign-name" class="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
-                                    <input type="text" id="campaign-name" name="name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="campaign-message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                                    <textarea id="campaign-message" name="message" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
-                                    <p class="text-sm text-gray-500 mt-1">Character count: <span id="message-char-count">0</span>/160</p>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="campaign-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
-                                    <select id="campaign-locations" name="locations" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                        <option value="" disabled>Loading locations...</option>
-                                    </select>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
-                                    <div class="flex flex-col space-y-2">
-                                        <label class="inline-flex items-center">
-                                            <input type="checkbox" name="includeActiveConversations" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                            <span class="ml-2 text-sm text-gray-700">Include subscribers with active conversations</span>
-                                        </label>
-                                        <label class="inline-flex items-center">
-                                            <input type="checkbox" name="recentlySentSubscriberOverride" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                            <span class="ml-2 text-sm text-gray-700">Include subscribers who received campaigns in the last 5 days</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div>
-                                    <button type="submit" id="campaign-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                        Create Campaign
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Templates Tab -->
-                <div id="templates-tab" class="tab-pane hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold">Message Templates</h2>
-                        <button id="new-template-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            New Template
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Title
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Type
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Created
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Last Used
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="templates-table-body">
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                        Connect to Podium to view templates
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- New Template Modal -->
-                    <div id="template-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold" id="template-modal-title">New Template</h3>
-                                <button class="modal-close text-gray-500 hover:text-gray-700">
-                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <form id="template-form">
-                                <div class="mb-4">
-                                    <label for="template-title" class="block text-sm font-medium text-gray-700 mb-1">Template Title</label>
-                                    <input type="text" id="template-title" name="title" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="template-text" class="block text-sm font-medium text-gray-700 mb-1">Message Text</label>
-                                    <textarea id="template-text" name="text" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required></textarea>
-                                    <p class="text-sm text-gray-500 mt-1">Character count: <span id="template-char-count">0</span>/160</p>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="template-access-level" class="block text-sm font-medium text-gray-700 mb-1">Access Level</label>
-                                    <select id="template-access-level" name="accessLevel" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                        <option value="location">Location</option>
-                                        <option value="organization">Organization</option>
-                                    </select>
-                                </div>
-                                <div class="mb-4" id="location-select-container">
-                                    <label for="template-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
-                                    <select id="template-locations" name="locationUids" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                        <option value="" disabled>Loading locations...</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <button type="submit" id="template-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                        Create Template
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contacts Tab -->
-                <div id="contacts-tab" class="tab-pane hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold">Contacts</h2>
-                        <button id="new-contact-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            New Contact
-                        </button>
-                    </div>
-
-                    <div class="mb-6">
-                        <div class="relative">
-                            <input type="text" id="search-contacts" class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search contacts...">
-                            <div class="absolute left-3 top-2.5">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Name
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Phone Number
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Email
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Tags
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="contacts-table-body">
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                        Connect to Podium to view contacts
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- New Contact Modal -->
-                    <div id="contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-                        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold" id="contact-modal-title">New Contact</h3>
-                                <button class="modal-close text-gray-500 hover:text-gray-700">
-                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                            <form id="contact-form">
-                                <div class="mb-4">
-                                    <label for="contact-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                    <input type="text" id="contact-name" name="name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="contact-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                    <input type="tel" id="contact-phone" name="phoneNumber" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                    <p class="text-sm text-gray-500 mt-1">Format: +15555555555</p>
-                                </div>
-                                <div class="mb-4">
-                                    <label for="contact-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                    <input type="email" id="contact-email" name="email" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                </div>
-                                <div class="mb-4">
-                                    <label for="contact-locations" class="block text-sm font-medium text-gray-700 mb-1">Locations</label>
-                                    <select id="contact-locations" name="locations" multiple class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" required>
-                                        <option value="" disabled>Loading locations...</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <button type="submit" id="contact-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                        Create Contact
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings Tab -->
-                <div id="settings-tab" class="tab-pane">
-                    <h2 class="text-xl font-bold mb-6">Settings</h2>
-
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                        <h3 class="text-lg font-bold mb-4">OAuth Configuration</h3>
-                        <div class="mb-4">
-                            <label for="client-id" class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                            <input type="text" id="client-id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                        </div>
-                        <div class="mb-4">
-                            <label for="client-secret" class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                            <input type="password" id="client-secret" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                        </div>
-                        <div class="mb-4">
-                            <label for="redirect-uri" class="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
-                            <input type="text" id="redirect-uri" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                        </div>
-                        <button id="save-oauth-settings" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                            Save OAuth Settings
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-bold mb-4">Application Settings</h3>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Auto-refresh Data</label>
-                            <select id="refresh-interval" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                                <option value="0">Off</option>
-                                <option value="60000">Every minute</option>
-                                <option value="300000">Every 5 minutes</option>
-                                <option value="900000">Every 15 minutes</option>
-                                <option value="1800000">Every 30 minutes</option>
-                                <option value="3600000">Every hour</option>
-                            </select>
-                        </div>
-                        <div>
-                            <button id="save-app-settings" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                Save Application Settings
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-lg shadow-md p-6 mt-6">
-                        <h3 class="text-lg font-bold mb-4">Help & Information</h3>
-                        <div class="prose text-gray-700">
-                            <h4 class="font-bold">OAuth Configuration Instructions</h4>
-                            <ol class="list-decimal list-inside">
-                                <li class="mb-2">Sign up or sign in at <a href="https://developer.podium.com" target="_blank" class="text-blue-600 hover:underline">developer.podium.com</a></li>
-                                <li class="mb-2">Create a new application in the developer portal</li>
-                                <li class="mb-2">When setting up your application, specify your redirect URI:
-                                    <ul class="list-disc list-inside ml-4 mt-1">
-                                        <li>For GitHub Pages, use <code class="bg-gray-100 px-2 py-1 rounded">https://ethos-auto-body.github.io/podium/</code></li>
-                                        <li>Make sure the trailing slash is included</li>
-                                    </ul>
-                                </li>
-                                <li class="mb-2">Once approved, enter your Client ID and Client Secret above</li>
-                                <li class="mb-2">Click "Save OAuth Settings" to store your credentials</li>
-                                <li class="mb-2">Return to the main page and click "Connect to Podium"</li>
-                            </ol>
-                            
-                            <h4 class="font-bold mt-4">Troubleshooting</h4>
-                            <ul class="list-disc list-inside">
-                                <li class="mb-2">Make sure your redirect URI exactly matches what you've set in the Podium developer portal</li>
-                                <li class="mb-2">Ensure your OAuth scopes are correctly set (should include read_locations, write_campaigns, etc.)</li>
-                                <li class="mb-2">Check browser console for errors (F12 or right-click → Inspect → Console)</li>
-                                <li class="mb-2">Clear your browser cache if you're experiencing persistent issues</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <nav class="flex items-center space-x-4">
+          <a href="#" class="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-all">Marketplace</a>
+          <a href="#" class="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-all">API Reference</a>
+          <a href="#" class="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-all">Guides</a>
+          <button id="logoutBtn" class="btn-secondary px-4 py-2 text-sm font-medium">Logout</button>
+        </nav>
+      </div>
     </div>
+  </header>
 
-    <script>
-        // Debug function for settings
-        function debugSettings() {
-            console.log("Current settings:");
-            console.log("Client ID:", localStorage.getItem('podium_client_id'));
-            console.log("Redirect URI:", localStorage.getItem('podium_redirect_uri'));
-            console.log("Refresh Interval:", localStorage.getItem('podium_refresh_interval'));
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[var(--netlify-sidebar)] overflow-y-auto">
+      <div class="p-6">
+        <h2 class="text-lg font-semibold text-white">My Application</h2>
+      </div>
+      <nav class="space-y-1 px-3">
+        <a href="#" class="nav-link nav-item group flex items-center px-3 py-3 text-sm font-medium rounded-md text-gray-300 hover:text-white"
+           data-target="basic-info">
+          <i class="fas fa-info-circle mr-3 text-gray-400 group-hover:text-white"></i>Basic Info
+        </a>
+        <a href="#" class="nav-link nav-item nav-item-active group flex items-center px-3 py-3 text-sm font-medium rounded-md text-white"
+           data-target="oauth">
+          <i class="fas fa-key mr-3 text-white"></i>OAuth
+        </a>
+        <a href="#" class="nav-link nav-item group flex items-center px-3 py-3 text-sm font-medium rounded-md text-gray-300 hover:text-white"
+           data-target="webhooks">
+          <i class="fas fa-plug mr-3 text-gray-400 group-hover:text-white"></i>Webhooks
+        </a>
+        <a href="#" class="nav-link nav-item group flex items-center px-3 py-3 text-sm font-medium rounded-md text-gray-300 hover:text-white"
+           data-target="api-explorer">
+          <i class="fas fa-search mr-3 text-gray-400 group-hover:text-white"></i>API Explorer
+        </a>
+        <a href="#" class="nav-link nav-item group flex items-center px-3 py-3 text-sm font-medium rounded-md text-gray-300 hover:text-white"
+           data-target="documentation">
+          <i class="fas fa-book mr-3 text-gray-400 group-hover:text-white"></i>Documentation
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 relative overflow-y-auto bg-gray-100 p-8">
+      <!-- Basic Info Panel -->
+      <section id="basic-info-panel" class="content-panel hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">Basic Information</h1>
+          <div class="flex space-x-3">
+            <button class="cancel-btn btn-secondary px-4 py-2 text-sm font-medium">Cancel</button>
+            <button class="save-btn btn-primary px-4 py-2 text-sm font-medium">Save</button>
+          </div>
+        </div>
+        <div class="netlify-card overflow-hidden">
+          <div class="px-6 py-6">
+            <div class="grid gap-6">
+              <div>
+                <label for="app-name" class="block text-sm font-medium text-gray-700 mb-1">Application Name</label>
+                <input type="text" id="app-name" class="form-input w-full" placeholder="My Integration"/>
+              </div>
+              <div>
+                <label for="app-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea id="app-description" rows="3" class="form-input w-full" placeholder="Describe what your application does"></textarea>
+              </div>
+              <div>
+                <label for="website-url" class="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
+                <input type="url" id="website-url" class="form-input w-full" placeholder="https://example.com"/>
+              </div>
+              <div>
+                <label for="privacy-url" class="block text-sm font-medium text-gray-700 mb-1">Privacy Policy URL</label>
+                <input type="url" id="privacy-url" class="form-input w-full" placeholder="https://example.com/privacy"/>
+              </div>
+              <div>
+                <label for="support-email" class="block text-sm font-medium text-gray-700 mb-1">Support Email</label>
+                <input type="email" id="support-email" class="form-input w-full" placeholder="support@example.com"/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OAuth Panel -->
+      <section id="oauth-panel" class="content-panel">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">OAuth</h1>
+          <div class="flex space-x-3">
+            <button class="cancel-btn btn-secondary px-4 py-2 text-sm font-medium">Cancel</button>
+            <button id="oauth-save-btn" class="save-btn btn-primary px-4 py-2 text-sm font-medium">Save</button>
+          </div>
+        </div>
+        <div class="netlify-card overflow-hidden">
+          <div class="px-6 py-6">
+            <div class="grid gap-6">
+              <!-- App Icon -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">App Icon</label>
+                <div class="mt-1 flex items-center">
+                  <div class="h-32 w-32 border-2 border-dashed rounded-md flex items-center justify-center text-gray-400
+                              cursor-pointer transition-all hover:border-teal-500 hover:text-teal-500"
+                       style="border-color: var(--netlify-border);">
+                    <i class="fas fa-plus fa-2x"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Client ID -->
+              <div>
+                <label for="client-id" class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                <div class="relative flex mt-1">
+                  <input type="text" id="client-id" class="form-input pr-12 w-full bg-gray-50" placeholder="Will appear here"/>
+                  <button id="copy-client-id" class="absolute right-0 top-0 h-full px-3 py-2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <i class="far fa-copy"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Client Secret -->
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label for="client-secret" class="block text-sm font-medium text-gray-700">Client Secret</label>
+                  <button id="regenerate-secret" class="text-xs" style="color: var(--netlify-primary);">Regenerate</button>
+                </div>
+                <div class="relative flex mt-1">
+                  <input type="password" id="client-secret" class="form-input pr-12 w-full bg-gray-50" placeholder="Will appear here"/>
+                  <button id="toggle-secret" class="absolute right-0 top-0 h-full px-3 py-2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <i class="far fa-eye"></i>
+                  </button>
+                </div>
+                <p class="mt-1 text-sm text-gray-500">Never share your client secret.</p>
+              </div>
+
+              <!-- Redirect URI -->
+              <div>
+                <label for="redirect-uri" class="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+                <input type="url" id="redirect-uri" class="form-input w-full" placeholder="https://example.com/callback"/>
+                <p class="mt-1 text-sm text-gray-500">Where users will be redirected after authentication</p>
+              </div>
+
+              <!-- Scopes -->
+              <div>
+                <label for="scopes" class="block text-sm font-medium text-gray-700 mb-1">Scopes</label>
+                <div class="relative mt-1">
+                  <button id="select-scopes-btn" class="inline-flex justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white
+                                                    border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none transition-all">
+                    <span>Select Scopes</span><i class="fas fa-chevron-down ml-2"></i>
+                  </button>
+                  <div id="scopes-dropdown"
+                       class="hidden absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5
+                              overflow-auto max-h-60">
+                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Read</div>
+                    <div class="space-y-0.5 px-2">
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_locations"/>read_locations
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_organizations"/>read_organizations
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_campaigns"/>read_campaigns
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_contacts"/>read_contacts
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_templates"/>read_templates
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_messages"/>read_messages
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_reviews"/>read_reviews
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="read_payments"/>read_payments
+                      </label>
+                    </div>
+                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Write</div>
+                    <div class="space-y-0.5 px-2">
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_campaigns"/>write_campaigns
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_contacts"/>write_contacts
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_templates"/>write_templates
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_messages"/>write_messages
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_reviews"/>write_reviews
+                      </label>
+                      <label class="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer">
+                        <input type="checkbox" class="scope-checkbox custom-checkbox mr-2" value="write_payments"/>write_payments
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div id="selected-scopes" class="mt-3 flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="mt-6 netlify-card overflow-hidden">
+          <div class="px-6 py-6">
+            <h3 class="flex items-center text-lg font-medium text-gray-900 mb-4">
+              <i class="fas fa-book-open mr-2" style="color: var(--netlify-primary)"></i>Resources
+            </h3>
+            <p class="text-sm text-gray-600">OAuth 2.0 provides a secure way to access the E.A.B API.</p>
+            <div class="mt-3 space-y-2">
+              <a href="#" class="block text-base hover:underline" style="color: var(--netlify-primary)">OAuth 2.0 Overview</a>
+              <a href="#" class="block text-base hover:underline" style="color: var(--netlify-primary)">OAuth Scopes</a>
+              <a href="#" class="block text-base hover:underline" style="color: var(--netlify-primary)">Implementation Guide</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Webhooks Panel -->
+      <section id="webhooks-panel" class="content-panel hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">Webhooks</h1>
+          <button id="add-webhook-btn" class="btn-primary px-4 py-2 text-sm font-medium">Add Webhook</button>
+        </div>
+        <div id="webhooks-container" class="netlify-card overflow-hidden p-6 text-center text-gray-500">
+          <i class="fas fa-plug fa-2x mb-4 text-gray-400"></i>
+          <h3 class="text-base font-medium text-gray-900 mb-1">No webhooks</h3>
+          <p class="text-sm mb-4">Create a new webhook to receive real-time events.</p>
+          <button id="empty-add-webhook-btn" class="btn-primary inline-flex items-center px-5 py-2 text-sm font-medium">
+            <i class="fas fa-plus mr-2"></i>Add Webhook
+          </button>
+        </div>
+      </section>
+
+      <!-- API Explorer Panel -->
+      <section id="api-explorer-panel" class="content-panel hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">API Explorer</h1>
+        </div>
+        <div class="netlify-card overflow-hidden px-6 py-6">
+          <div class="grid gap-6">
+            <div>
+              <label for="endpoint-select" class="block text-sm font-medium text-gray-700 mb-1">Endpoint</label>
+              <select id="endpoint-select" class="form-input mt-1 block w-full">
+                <option value="">Select an endpoint</option>
+                <optgroup label="Locations">
+                  <option>GET /v4/locations</option>
+                  <option>GET /v4/locations/{uid}</option>
+                  <option>PATCH /v4/locations/{uid}</option>
+                </optgroup>
+                <optgroup label="Campaigns">
+                  <option>GET /v4/campaigns</option>
+                  <option>POST /v4/campaigns</option>
+                  <option>GET /v4/campaigns/{uid}</option>
+                </optgroup>
+                <optgroup label="Contacts">
+                  <option>GET /v4/contacts</option>
+                  <option>POST /v4/contacts</option>
+                  <option>GET /v4/contacts/{uid}</option>
+                </optgroup>
+              </select>
+            </div>
+            <div>
+              <label for="api-params" class="block text-sm font-medium text-gray-700 mb-1">Parameters</label>
+              <textarea id="api-params" rows="5"
+                        class="form-input w-full font-mono"
+                        placeholder='{
+  "name": "Example Campaign",
+  "message": "Hello, this is a test!",
+  "locations": ["location-uid"],
+  "status": "ACTIVE"
+}'></textarea>
+            </div>
+            <button id="send-request-btn" class="btn-primary inline-flex items-center px-4 py-2 text-sm font-medium">
+              Send Request
+            </button>
+            <div>
+              <label for="api-response" class="block text-sm font-medium text-gray-700 mb-1">Response</label>
+              <div class="mt-1 bg-gray-50 rounded-md border border-gray-200">
+                <pre id="api-response" class="p-4 font-mono text-sm overflow-auto max-h-80">// Response will appear here</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Documentation Panel -->
+      <section id="documentation-panel" class="content-panel hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">Documentation</h1>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="netlify-card p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Getting Started</h3>
+            <p class="text-gray-600 mb-4">Learn how to integrate with the E.A.B API</p>
+            <a href="#" class="flex items-center font-medium hover:underline" style="color: var(--netlify-primary)">
+              Read Guide <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+          <div class="netlify-card p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Authentication</h3>
+            <p class="text-gray-600 mb-4">Understand OAuth 2.0 and API authentication</p>
+            <a href="#" class="flex items-center font-medium hover:underline" style="color: var(--netlify-primary)">
+              Read Guide <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+          <div class="netlify-card p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">API Reference</h3>
+            <p class="text-gray-600 mb-4">Complete reference for all endpoints</p>
+            <a href="#" class="flex items-center font-medium hover:underline" style="color: var(--netlify-primary)">
+              View Reference <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+          <div class="netlify-card p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Webhooks</h3>
+            <p class="text-gray-600 mb-4">Learn how to use webhooks for real-time updates</p>
+            <a href="#" class="flex items-center font-medium hover:underline" style="color: var(--netlify-primary)">
+              Read Guide <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Persistence iframe for private browsing -->
+  <iframe id="persistence-frame" class="absolute opacity-0 pointer-events-none"></iframe>
+
+  <script>
+  (function() {
+    // LocalStorage fallback
+    try {
+      localStorage.setItem('test','x'); localStorage.removeItem('test');
+    } catch {
+      const iframe = document.getElementById('persistence-frame');
+      iframe.contentWindow.document.open();
+      iframe.contentWindow.document.write('<script>var storage = {};<\/script>');
+      iframe.contentWindow.document.close();
+      window.localStorage = {
+        setItem(k,v) { iframe.contentWindow.storage[k]=v; },
+        getItem(k)  { return iframe.contentWindow.storage[k]||null; },
+        removeItem(k){ delete iframe.contentWindow.storage[k]; },
+        clear()     { iframe.contentWindow.storage = {}; }
+      };
+    }
+
+    // Helpers
+    function saveState(key, value) {
+      try { localStorage.setItem('eab_'+key, JSON.stringify(value)); }
+      catch(e) { console.error('Save error', e); }
+    }
+    function loadState(key) {
+      try {
+        const v = localStorage.getItem('eab_'+key);
+        return v ? JSON.parse(v) : null;
+      } catch(e) { console.error('Load error', e); return null; }
+    }
+    function generateId() {
+      return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    }
+    function isValidUrl(s) {
+      try { new URL(s); return true; }
+      catch { return false; }
+    }
+    function showToast(msg, type) {
+      const t = document.getElementById('toast'),
+            icon = document.getElementById('toast-icon'),
+            txt = document.getElementById('toast-message');
+      t.className = 'toast toast-show';
+      if (type==='success') {
+        t.classList.add('toast-success');
+        icon.className = 'fas fa-check-circle mr-2';
+      } else {
+        t.classList.add('toast-error');
+        icon.className = 'fas fa-exclamation-circle mr-2';
+      }
+      txt.textContent = msg;
+      setTimeout(()=> t.classList.remove('toast-show'), 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=> {
+      const navLinks = document.querySelectorAll('.nav-link'),
+            panels   = document.querySelectorAll('.content-panel');
+
+      // Navigation
+      navLinks.forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          const target = link.dataset.target;
+          navLinks.forEach(l => l.classList.remove('nav-item-active','text-white'));
+          panels.forEach(p => p.classList.add('hidden'));
+          link.classList.add('nav-item-active','text-white');
+          document.getElementById(target+'-panel').classList.remove('hidden');
+          saveState('activePanel', target);
+        });
+      });
+
+      // Restore panel or default to OAuth
+      const active = loadState('activePanel');
+      if (active) {
+        document.querySelector(`.nav-link[data-target="${active}"]`).click();
+      } else {
+        document.querySelector(`.nav-link[data-target="oauth"]`).click();
+      }
+
+      // Scopes dropdown
+      const scopesBtn = document.getElementById('select-scopes-btn'),
+            dropdown  = document.getElementById('scopes-dropdown'),
+            checkboxes= document.querySelectorAll('.scope-checkbox'),
+            selContainer = document.getElementById('selected-scopes');
+
+      scopesBtn.addEventListener('click', ()=> dropdown.classList.toggle('hidden'));
+      document.addEventListener('click', e => {
+        if (!scopesBtn.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.classList.add('hidden');
         }
-        
-        // OAuth Configuration Storage
-        const config = {
-            clientId: localStorage.getItem('podium_client_id') || '',
-            clientSecret: localStorage.getItem('podium_client_secret') || '',
-            redirectUri: localStorage.getItem('podium_redirect_uri') || 'https://ethos-auto-body.github.io/podium/',
-            refreshInterval: parseInt(localStorage.getItem('podium_refresh_interval') || '0', 10),
-            apiBase: 'https://api.podium.com'
-        };
+      });
+      function updateSelectedScopes() {
+        selContainer.innerHTML = '';
+        const picked = [];
+        checkboxes.forEach(cb => {
+          if (cb.checked) {
+            picked.push(cb.value);
+            const badge = document.createElement('div');
+            badge.className = 'netlify-badge';
+            badge.innerHTML = `${cb.value} <button data-scope="${cb.value}">&times;</button>`;
+            selContainer.appendChild(badge);
+          }
+        });
+        saveState('selectedScopes', picked);
+        selContainer.querySelectorAll('button').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const sc = btn.dataset.scope;
+            checkboxes.forEach(cb=>{ if(cb.value===sc) cb.checked=false; });
+            updateSelectedScopes();
+          });
+        });
+      }
+      checkboxes.forEach(cb => cb.addEventListener('change', updateSelectedScopes));
+      const savedScopes = loadState('selectedScopes');
+      if (savedScopes) {
+        checkboxes.forEach(cb => { if (savedScopes.includes(cb.value)) cb.checked = true; });
+        updateSelectedScopes();
+      }
 
-        // Auth Token Storage
-        let auth = {
-            accessToken: localStorage.getItem('podium_access_token') || null,
-            refreshToken: localStorage.getItem('podium_refresh_token') || null,
-            expiresAt: localStorage.getItem('podium_expires_at') || null
-        };
+      // Toggle secret visibility
+      document.getElementById('toggle-secret').addEventListener('click', ()=>{
+        const inp = document.getElementById('client-secret'),
+              btn = document.getElementById('toggle-secret'),
+              type = inp.type==='password'?'text':'password';
+        inp.type = type;
+        btn.innerHTML = type==='password'?'<i class="far fa-eye"></i>':'<i class="far fa-eye-slash"></i>';
+      });
 
-        // DOM Elements container
-        const elements = {};
+      // Copy Client ID
+      document.getElementById('copy-client-id').addEventListener('click', ()=>{
+        const inp = document.getElementById('client-id');
+        inp.select(); document.execCommand('copy');
+        showToast('Client ID copied!', 'success');
+      });
 
-        // Initialize UI
-        function init() {
-            console.log("Initializing application...");
-            console.log("Current config:", config);
-            
-            // Load settings into form
-            elements.clientIdInput.value = config.clientId;
-            elements.clientSecretInput.value = config.clientSecret;
-            elements.redirectUriInput.value = config.redirectUri;
-            elements.refreshIntervalSelect.value = config.refreshInterval;
-            
-            // Check for URL params (OAuth callback)
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            
-            console.log("Authorization code in URL:", code);
-            
-            if (code) {
-                console.log("Authorization code found, exchanging for token...");
-                // Remove code from URL to prevent issues with refreshing
-                window.history.replaceState({}, document.title, window.location.pathname);
-                // Exchange code for token
-                exchangeCodeForToken(code);
-            } else {
-                console.log("No authorization code found in URL");
-                
-                // Check if we have a valid token
-                if (auth.accessToken && auth.expiresAt && new Date(auth.expiresAt) > new Date()) {
-                    console.log("Valid access token found, updating UI...");
-                    updateAuthUI(true);
-                    loadInitialData();
-                    // Switch to dashboard if authenticated
-                    switchTab('dashboard');
-                } else if (auth.refreshToken) {
-                    console.log("Access token expired, attempting to refresh...");
-                    refreshAccessToken();
-                } else {
-                    console.log("No valid tokens found, showing unauthenticated UI");
-                    updateAuthUI(false);
-                    // If not authenticated, start on settings tab
-                    switchTab('settings');
-                }
-            }
-            
-            // Setup event listeners
-            setupEventListeners();
-            
-            // Setup refresh interval if enabled
-            if (config.refreshInterval > 0) {
-                setInterval(refreshData, config.refreshInterval);
-            }
+      // Regenerate secret
+      document.getElementById('regenerate-secret').addEventListener('click', ()=>{
+        const newSec = generateId()+generateId();
+        document.getElementById('client-secret').value = newSec;
+        saveState('clientSecret', newSec);
+        showToast('Client Secret regenerated!', 'success');
+      });
+
+      // OAuth Save
+      document.getElementById('oauth-save-btn').addEventListener('click', ()=>{
+        const uriInput = document.getElementById('redirect-uri');
+        const uri = uriInput.value.trim();
+        if (!uri) return showToast('Redirect URI is required', 'error');
+        if (!isValidUrl(uri)) return showToast('Please enter a valid URL', 'error');
+        saveState('redirectUri', uri);
+
+        let clientId = loadState('clientId');
+        if (!clientId) {
+          clientId = generateId();
+          saveState('clientId', clientId);
+          document.getElementById('client-id').value = clientId;
+        }
+        let clientSecret = loadState('clientSecret');
+        if (!clientSecret) {
+          clientSecret = generateId()+generateId();
+          saveState('clientSecret', clientSecret);
+          document.getElementById('client-secret').value = clientSecret;
         }
 
-        // Setup Event Listeners
-        function setupEventListeners() {
-            if (elements.loginBtn) {
-                console.log("Login button found, adding event listener");
-                elements.loginBtn.addEventListener('click', function(e) {
-                    console.log("Login button clicked");
-                    e.preventDefault();
-                    initiateOAuth();
-                });
-            }
-            
-            if (elements.logoutBtn) {
-                elements.logoutBtn.addEventListener('click', logout);
-            }
-            // Tab navigation
-            elements.tabLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const targetId = link.getAttribute('data-target');
-                    switchTab(targetId);
-                });
-            });
-            
-            // Settings save buttons
-            elements.saveOAuthBtn.addEventListener('click', saveOAuthSettings);
-            elements.saveAppSettingsBtn.addEventListener('click', saveAppSettings);
-            
-            // Campaign modal
-            elements.newCampaignBtn?.addEventListener('click', () => openModal('campaign'));
-            elements.campaignForm?.addEventListener('submit', handleCampaignSubmit);
-            
-            // Template modal
-            elements.newTemplateBtn?.addEventListener('click', () => openModal('template'));
-            elements.templateForm?.addEventListener('submit', handleTemplateSubmit);
-            
-            // Contact modal
-            elements.newContactBtn?.addEventListener('click', () => openModal('contact'));
-            elements.contactForm?.addEventListener('submit', handleContactSubmit);
-            
-            // Close modals
-            document.querySelectorAll('.modal-close').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('[id$="-modal"]').forEach(modal => {
-                        modal.classList.add('hidden');
-                    });
-                });
-            });
-            
-            // Add Excel import listeners
-            addExcelImportListeners();
-        }
+        const scopes = (loadState('selectedScopes')||[]).join('%20');
+        const state = generateId();
+        saveState('oauthState', state);
 
-        // Excel Import Event Listeners
-        function addExcelImportListeners() {
-            const importExcelBtn = document.getElementById('import-excel-btn');
-            if (importExcelBtn) {
-                importExcelBtn.addEventListener('click', () => {
-                    const fileInput = document.getElementById('excel-file');
-                    if (fileInput.files.length > 0) {
-                        importExcelContacts(fileInput.files[0]);
-                    } else {
-                        alert('Please select an Excel file');
-                    }
-                });
-            }
-            
-            const sendImportedCampaignBtn = document.getElementById('send-imported-campaign-btn');
-            if (sendImportedCampaignBtn) {
-                sendImportedCampaignBtn.addEventListener('click', sendImportedCampaign);
-            }
-            
-            // Character counter for message
-            const importedCampaignMessage = document.getElementById('imported-campaign-message');
-            const importedMessageCharCount = document.getElementById('imported-message-char-count');
-            if (importedCampaignMessage && importedMessageCharCount) {
-                importedCampaignMessage.addEventListener('input', () => {
-                    importedMessageCharCount.textContent = importedCampaignMessage.value.length;
-                });
-            }
-        }
+        const authUrl = `https://api.podium.com/oauth/authorize?client_id=${clientId}`
+          +`&redirect_uri=${encodeURIComponent(uri)}&scope=${scopes}&state=${state}`;
+        window.open(authUrl, '_blank');
+        showToast('OAuth flow initiated!', 'success');
+      });
 
-        // Switch between tabs
-        function switchTab(targetId) {
-            // Update tab links
-            elements.tabLinks.forEach(link => {
-                const linkTarget = link.getAttribute('data-target');
-                const div = link.querySelector('div');
-                
-                if (linkTarget === targetId) {
-                    div.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-                    div.classList.add('border-blue-500', 'text-blue-600');
-                    link.classList.add('active-tab');
-                } else {
-                    div.classList.remove('border-blue-500', 'text-blue-600');
-                    div.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-                    link.classList.remove('active-tab');
-                }
-            });
-            
-            // Show selected tab
-            elements.tabPanes.forEach(pane => {
-                if (pane.id === `${targetId}-tab`) {
-                    pane.classList.remove('hidden');
-                } else {
-                    pane.classList.add('hidden');
-                }
-            });
-            
-            // Update URL hash to allow for direct navigation
-            window.location.hash = targetId;
-        }
+      // Load saved OAuth fields
+      const sc = loadState('selectedScopes')||[];
+      const cid = loadState('clientId'), csec = loadState('clientSecret'), ruri = loadState('redirectUri');
+      if (cid) document.getElementById('client-id').value = cid;
+      if (csec) document.getElementById('client-secret').value = csec;
+      if (ruri) document.getElementById('redirect-uri').value = ruri;
 
-        // Save OAuth Settings
-        function saveOAuthSettings() {
-            // Get values from the form
-            config.clientId = elements.clientIdInput.value.trim();
-            config.clientSecret = elements.clientSecretInput.value.trim();
-            config.redirectUri = elements.redirectUriInput.value.trim();
-            
-            // Save to localStorage
-            localStorage.setItem('podium_client_id', config.clientId);
-            localStorage.setItem('podium_client_secret', config.clientSecret);
-            localStorage.setItem('podium_redirect_uri', config.redirectUri);
-            
-            console.log("OAuth settings saved:", {
-                clientId: config.clientId,
-                redirectUri: config.redirectUri
-                // Not logging clientSecret for security
-            });
-            
-            // Show confirmation to user
-            alert('OAuth settings saved successfully!');
-            
-            // Update UI if needed
-            if (auth.accessToken) {
-                // If already authenticated, no need to change UI
-            } else {
-                // Update login button status if credentials are ready
-                elements.loginBtn.disabled = !(config.clientId && config.redirectUri);
-            }
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', ()=>{
+        if (confirm('Are you sure you want to log out?')) {
+          ['accessToken','refreshToken','tokenExpiry'].forEach(k=>localStorage.removeItem('eab_'+k));
+          showToast('Logged out!', 'success');
         }
+      });
 
-        // Save App Settings
-        function saveAppSettings() {
-            config.refreshInterval = parseInt(elements.refreshIntervalSelect.value, 10);
-            localStorage.setItem('podium_refresh_interval', config.refreshInterval);
-            
-            // Clear any existing interval and set a new one if needed
-            if (window.refreshIntervalId) {
-                clearInterval(window.refreshIntervalId);
-                window.refreshIntervalId = null;
-            }
-            
-            if (config.refreshInterval > 0) {
-                window.refreshIntervalId = setInterval(refreshData, config.refreshInterval);
-            }
-            
-            alert('Application settings saved!');
-        }
+      // Cancel buttons
+      document.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', ()=>{
+          const savedCid = loadState('clientId'),
+                savedCsec= loadState('clientSecret'),
+                savedUri = loadState('redirectUri');
+          if (savedCid) document.getElementById('client-id').value = savedCid;
+          if (savedCsec) document.getElementById('client-secret').value = savedCsec;
+          if (savedUri) document.getElementById('redirect-uri').value = savedUri;
+          showToast('Changes discarded', 'success');
+        });
+      });
 
-        // Open modal dialogs
-        function openModal(type) {
-            document.getElementById(`${type}-modal`).classList.remove('hidden');
-            
-            // Reset form
-            document.getElementById(`${type}-form`).reset();
-            
-            // Load any necessary data (like locations dropdown)
-            if (type === 'campaign' || type === 'template' || type === 'contact') {
-                loadLocations(type);
-            }
-        }
+      // Webhooks: display form, fetch/list, create, edit, delete
+      const webhooksPanel = document.getElementById('webhooks-panel'),
+            whContainer  = document.getElementById('webhooks-container'),
+            addBtn       = document.getElementById('add-webhook-btn'),
+            emptyAddBtn  = document.getElementById('empty-add-webhook-btn');
 
-        // Load locations for dropdowns
-        function loadLocations(formType) {
-            console.log(`Loading locations for ${formType}...`);
-            // This makes an API request to get locations
-            apiRequest('/v4/locations', 'GET')
-                .then(response => {
-                    console.log('Locations loaded:', response);
-                    const locations = response.data;
-                    const select = document.getElementById(`${formType}-locations`);
-                    
-                    // Clear existing options
-                    select.innerHTML = '';
-                    
-                    // Add options for each location
-                    locations.forEach(location => {
-                        const option = document.createElement('option');
-                        option.value = location.uid;
-                        option.textContent = location.name || location.displayName;
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading locations:', error);
-                    alert('Failed to load locations. Please try again.');
-                });
-        }
+      function showWebhooksPlaceholder() {
+        whContainer.innerHTML = `
+          <div class="text-center py-10">
+            <i class="fas fa-plug fa-2x text-gray-400 mb-4"></i>
+            <h3 class="text-base font-medium text-gray-900">No webhooks</h3>
+            <p class="text-sm text-gray-500 mb-6">Create a new webhook to receive real-time events.</p>
+            <button id="empty-add-webhook-btn" class="btn-primary inline-flex items-center px-5 py-2 text-sm font-medium">
+              <i class="fas fa-plus mr-2"></i>Add Webhook
+            </button>
+          </div>`;
+        document.getElementById('empty-add-webhook-btn')
+                .addEventListener('click', displayWebhookForm);
+      }
 
-        // Handle campaign form submission
-        function handleCampaignSubmit(e) {
-            e.preventDefault();
-            const formData = new FormData(elements.campaignForm);
-            
-            // Create request payload
-            const campaign = {
-                name: formData.get('name'),
-                message: formData.get('message'),
-                locations: Array.from(document.getElementById('campaign-locations').selectedOptions).map(opt => opt.value),
-                includeActiveConversations: formData.get('includeActiveConversations') === 'on',
-                recentlySentSubscriberOverride: formData.get('recentlySentSubscriberOverride') === 'on',
-                status: 'ACTIVE'
-            };
-            
-            // Submit to API
-            apiRequest('/v4/campaigns', 'POST', campaign)
-                .then(response => {
-                    document.getElementById('campaign-modal').classList.add('hidden');
-                    loadCampaigns();
-                    alert('Campaign created successfully!');
-                })
-                .catch(error => {
-                    console.error('Error creating campaign:', error);
-                    alert('Failed to create campaign. Please try again.');
-                });
-        }
+      function displayWebhookForm(webhook) {
+        const isEdit = !!webhook;
+        whContainer.innerHTML = `
+          <div class="mb-6 flex justify-between items-center">
+            <h1 class="text-2xl font-semibold text-gray-900">${isEdit?'Edit':'Add'} Webhook</h1>
+            <div class="space-x-2">
+              <button id="webhook-cancel-btn" class="btn-secondary px-4 py-2 text-sm font-medium">Cancel</button>
+              <button id="webhook-save-btn" class="btn-primary px-4 py-2 text-sm font-medium">${isEdit?'Update':'Save'}</button>
+            </div>
+          </div>
+          <div class="netlify-card overflow-hidden">
+            <div class="px-6 py-6 grid gap-6">
+              <div>
+                <label for="webhook-url" class="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+                <input type="url" id="webhook-url" class="form-input w-full" placeholder="https://your-server.com/webhook" value="${webhook?.url||''}"/>
+                <p class="mt-1 text-sm text-gray-500">Where Podium will send event notifications</p>
+              </div>
+              <div>
+                <label for="webhook-secret" class="block text-sm font-medium text-gray-700 mb-1">Secret Key</label>
+                <input type="text" id="webhook-secret" class="form-input w-full" placeholder="Your secret key" value="${webhook?.secret||''}"/>
+                <p class="mt-1 text-sm text-gray-500">Used to verify webhook requests</p>
+              </div>
+              <div class="flex items-center mb-4">
+                <label class="inline-flex items-center">
+                  <input type="checkbox" id="webhook-status" class="custom-checkbox mr-2"${webhook?.disabled?'':' checked'}/>
+                  <span>${webhook?.disabled?'Disabled':'Active'}</span>
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Event Types</label>
+                <div class="space-y-2">
+                  <div class="border border-gray-200 rounded-md p-4">
+                    <h4 class="font-medium mb-2">Contact Events</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                      ${['contact.created','contact.updated','contact.deleted']
+                        .map(evt=>`
+                          <label class="flex items-center">
+                            <input type="checkbox" class="custom-checkbox mr-2" value="${evt}"
+                              ${(webhook?.eventTypes?.includes(evt)?'checked':'')}/>
+                            <span>${evt}</span>
+                          </label>`).join('')}
+                    </div>
+                  </div>
+                  <div class="border border-gray-200 rounded-md p-4">
+                    <h4 class="font-medium mb-2">Message Events</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                      ${['message.sent','message.received','message.failed']
+                        .map(evt=>`
+                          <label class="flex items-center">
+                            <input type="checkbox" class="custom-checkbox mr-2" value="${evt}"
+                              ${(webhook?.eventTypes?.includes(evt)?'checked':'')}/>
+                            <span>${evt}</span>
+                          </label>`).join('')}
+                    </div>
+                  </div>
+                  <div class="border border-gray-200 rounded-md p-4">
+                    <h4 class="font-medium mb-2">Invoice Events</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                      ${['invoice.created','invoice.payment_created']
+                        .map(evt=>`
+                          <label class="flex items-center">
+                            <input type="checkbox" class="custom-checkbox mr-2" value="${evt}"
+                              ${(webhook?.eventTypes?.includes(evt)?'checked':'')}/>
+                            <span>${evt}</span>
+                          </label>`).join('')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        document.getElementById('webhook-cancel-btn').addEventListener('click', loadWebhooks);
+        document.getElementById('webhook-save-btn').addEventListener('click', ()=> {
+          isEdit ? updateWebhook(webhook.uid) : saveWebhook();
+        });
+      }
 
-        // Handle template form submission
-        function handleTemplateSubmit(e) {
-            e.preventDefault();
-            const formData = new FormData(elements.templateForm);
-            
-            // Create request payload
-            const template = {
-                title: formData.get('title'),
-                text: formData.get('text'),
-                accessLevel: formData.get('accessLevel'),
-                type: 'custom',
-                nonDeletable: false
-            };
-            
-            // Add location UIDs if access level is location
-            if (template.accessLevel === 'location') {
-                template.locationUids = Array.from(document.getElementById('template-locations').selectedOptions).map(opt => opt.value);
-            }
-            
-            // Submit to API
-            apiRequest('/v4/templates', 'POST', template)
-                .then(response => {
-                    document.getElementById('template-modal').classList.add('hidden');
-                    loadTemplates();
-                    alert('Template created successfully!');
-                })
-                .catch(error => {
-                    console.error('Error creating template:', error);
-                    alert('Failed to create template. Please try again.');
-                });
-        }
-
-        // Handle contact form submission
-        function handleContactSubmit(e) {
-            e.preventDefault();
-            const formData = new FormData(elements.contactForm);
-            
-            // Create request payload
-            const contact = {
-                name: formData.get('name'),
-                phoneNumber: formData.get('phoneNumber'),
-                email: formData.get('email'),
-                locations: Array.from(document.getElementById('contact-locations').selectedOptions).map(opt => opt.value)
-            };
-            
-            // Submit to API
-            apiRequest('/v4/contacts', 'POST', contact)
-                .then(response => {
-                    document.getElementById('contact-modal').classList.add('hidden');
-                    loadContacts();
-                    alert('Contact created successfully!');
-                })
-                .catch(error => {
-                    console.error('Error creating contact:', error);
-                    alert('Failed to create contact. Please try again.');
-                });
-        }
-
-        // Import Excel Contacts
-        function importExcelContacts(excelFile) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                // Assume first sheet
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                
-                // Process the data
-                processContactsFromExcel(jsonData);
-            };
-            reader.readAsArrayBuffer(excelFile);
-        }
-
-        // Process the extracted Excel data
-        function processContactsFromExcel(contacts) {
-            // Validate contacts have necessary data
-            const validContacts = contacts.filter(contact => 
-                contact.name && contact.phoneNumber && 
-                validatePhoneNumber(contact.phoneNumber)
-            );
-            
-            if (validContacts.length === 0) {
-                alert('No valid contacts found in the Excel file. Please ensure your file has columns for "name" and "phoneNumber".');
-                return;
-            }
-            
-            // Display the extracted contacts
-            const contactsTable = document.getElementById('imported-contacts-table');
-            contactsTable.innerHTML = '';
-            
-            validContacts.forEach(contact => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${escapeHtml(contact.name)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${formatPhoneNumber(contact.phoneNumber)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <input type="checkbox" checked class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+      function loadWebhooks() {
+        const token = localStorage.getItem('eab_accessToken');
+        if (!token) return showToast('Please authenticate first', 'error');
+        whContainer.innerHTML = `
+          <div class="flex justify-center py-10"><div class="loader"></div></div>`;
+        fetch('https://api.podium.com/v4/webhooks', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r=> {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(json=>{
+          const list = json.data||[];
+          if (!list.length) {
+            showWebhooksPlaceholder();
+            return;
+          }
+          let html = `
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Events</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                ${list.map(w=>`
+                  <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${w.url}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      ${w.eventTypes.slice(0,2).join(', ')}
+                      ${w.eventTypes.length>2?`+${w.eventTypes.length-2} more`:''}
                     </td>
-                `;
-                contactsTable.appendChild(row);
-            });
-            
-            // Load locations for the dropdown
-            loadLocations('imported-campaign');
-            
-            // Show the campaign creation section
-            document.getElementById('campaign-from-excel').classList.remove('hidden');
-            
-            // Scroll to the campaign creation section
-            document.getElementById('campaign-from-excel').scrollIntoView({
-                behavior: 'smooth'
-            });
-        }
-
-        // Validate and format phone numbers
-        function validatePhoneNumber(phone) {
-            // Remove non-digit characters
-            const digitsOnly = phone.toString().replace(/\D/g, '');
-            
-            // Check if the number has at least 10 digits
-            return digitsOnly.length >= 10;
-        }
-
-        function formatPhoneNumber(phone) {
-            // Remove non-digit characters
-            let digitsOnly = phone.toString().replace(/\D/g, '');
-            
-            // Ensure it starts with country code
-            if (digitsOnly.length === 10) {
-                digitsOnly = '1' + digitsOnly; // Add US country code if not present
-            }
-            
-            return '+' + digitsOnly;
-        }
-
-        // Send campaign to imported contacts
-        function sendImportedCampaign() {
-            const campaignName = document.getElementById('imported-campaign-name').value;
-            const message = document.getElementById('imported-campaign-message').value;
-            const locationUid = document.getElementById('imported-campaign-locations').value;
-            
-            if (!campaignName || !message || !locationUid) {
-                alert('Please fill in all required fields');
-                return;
-            }
-            
-            // Get selected contacts
-            const contactRows = document.getElementById('imported-contacts-table').querySelectorAll('tr');
-            const selectedContacts = [];
-            
-            contactRows.forEach(row => {
-                const checkbox = row.querySelector('input[type="checkbox"]');
-                if (checkbox && checkbox.checked) {
-                    const name = row.querySelector('td:first-child').textContent;
-                    const phoneNumber = row.querySelector('td:nth-child(2)').textContent;
-                    selectedContacts.push({ name, phoneNumber });
-                }
-            });
-            
-            if (selectedContacts.length === 0) {
-                alert('Please select at least one contact');
-                return;
-            }
-            
-            // First, create contacts for each selected contact
-            const createContactPromises = selectedContacts.map(contact => 
-                apiRequest('/v4/contacts', 'POST', {
-                    name: contact.name,
-                    phoneNumber: contact.phoneNumber,
-                    locations: [locationUid]
-                })
-            );
-            
-            // Show loading indicator
-            const sendButton = document.getElementById('send-imported-campaign-btn');
-            const originalText = sendButton.textContent;
-            sendButton.textContent = 'Sending...';
-            sendButton.disabled = true;
-            
-            // Process all contact creation requests
-            Promise.all(createContactPromises)
-                .then(() => {
-                    // Then create the campaign
-                    return apiRequest('/v4/campaigns', 'POST', {
-                        name: campaignName,
-                        message: message,
-                        locations: [locationUid],
-                        status: 'ACTIVE'
-                    });
-                })
-                .then(response => {
-                    alert('Campaign created and sent successfully!');
-                    
-                    // Reset form
-                    document.getElementById('imported-campaign-name').value = '';
-                    document.getElementById('imported-campaign-message').value = '';
-                    document.getElementById('imported-contacts-table').innerHTML = '';
-                    document.getElementById('campaign-from-excel').classList.add('hidden');
-                    document.getElementById('excel-file').value = '';
-                    
-                    // Refresh campaigns list
-                    loadCampaigns();
-                })
-                .catch(error => {
-                    console.error('Error sending campaign:', error);
-                    alert('Failed to create campaign. Please try again.');
-                })
-                .finally(() => {
-                    // Restore button
-                    sendButton.textContent = originalText;
-                    sendButton.disabled = false;
-                });
-        }
-
-        // OAuth Flow
-        function initiateOAuth() {
-            console.log("Starting OAuth flow...");
-            console.log("Client ID:", config.clientId);
-            console.log("Redirect URI:", config.redirectUri);
-            
-            if (!config.clientId || !config.redirectUri) {
-                alert('Please configure OAuth settings first.');
-                switchTab('settings');
-                return;
-            }
-            
-            const scope = "read_locations write_campaigns read_campaigns write_templates read_templates write_contacts read_contacts write_messages read_messages";
-            const authUrl = `${config.apiBase}/oauth/authorize` +
-              `?response_type=code` +
-              `&client_id=${config.clientId}` +
-              `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
-              `&scope=${encodeURIComponent(scope)}` +
-              `&state=podium_auth`;
-            
-            console.log("Redirecting to:", authUrl);
-            try {
-                console.log("Attempting to redirect...");
-                setTimeout(function() {
-                  window.location.replace(authUrl);
-                }, 500);
-              } catch (e) {
-                console.error("Redirect error:", e);
-                alert("Redirect failed: " + e.message);
-                
-                // Try alternative method
-                console.log("Trying alternative method...");
-                window.open(authUrl, "_self");
-              }
-        }
-
-        // Exchange code for token
-        function exchangeCodeForToken(code) {
-            console.log("Sending code to Netlify function…");
-          
-            fetch('https://podiumdev.netlify.app/.netlify/functions/exchange', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                code: code,
-                redirect_uri: config.redirectUri          // required so Podium matches it
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                        ${w.disabled?'bg-red-100 text-red-800':'bg-green-100 text-green-800'}">
+                        ${w.disabled?'Disabled':'Active'}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button class="edit-webhook text-teal-600 hover:text-teal-900 mr-3" data-uid="${w.uid}">Edit</button>
+                      <button class="delete-webhook text-red-600 hover:text-red-900" data-uid="${w.uid}">Delete</button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>`;
+          whContainer.innerHTML = html;
+          document.getElementById('add-webhook-btn')
+                  .addEventListener('click', ()=> displayWebhookForm());
+          document.querySelectorAll('.edit-webhook').forEach(btn=>{
+            btn.addEventListener('click', ()=> {
+              const uid = btn.dataset.uid;
+              fetch(`https://api.podium.com/v4/webhooks/${uid}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
               })
-            })
-            .then(res => res.json())
-            .then(data => {
-              console.log("Token exchange response:", data);
-          
-              if (data.access_token) {
-                const expiresIn  = data.expires_in || 36000;
-                const expiresAt  = new Date(Date.now() + expiresIn * 1000).toISOString();
-          
-                auth = {
-                  accessToken: data.access_token,
-                  refreshToken: data.refresh_token,
-                  expiresAt
-                };
-          
-                localStorage.setItem('podium_access_token',  auth.accessToken);
-                localStorage.setItem('podium_refresh_token', auth.refreshToken);
-                localStorage.setItem('podium_expires_at',    auth.expiresAt);
-          
-                updateAuthUI(true);
-                loadInitialData();
-                switchTab('dashboard');
-              } else {
-                console.error('Failed to exchange code for token:', data);
-                alert('Authentication failed. Please try again.');
-                updateAuthUI(false);
-              }
-            })
-            .catch(err => {
-              console.error('Error during token exchange:', err);
-              alert('Authentication failed. Please try again.');
-              updateAuthUI(false);
+              .then(r=> r.json())
+              .then(j=> displayWebhookForm(j.data))
+              .catch(e=> showToast('Error loading webhook', 'error'));
             });
-        }
-
-        // Refresh Access Token
-        function refreshAccessToken() {
-            console.log("Refreshing access token...");
-            
-            fetch(`${config.apiBase}/oauth/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    client_id: config.clientId,
-                    client_secret: config.clientSecret,
-                    grant_type: 'refresh_token',
-                    refresh_token: auth.refreshToken
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.access_token) {
-                    // Calculate expiry (default to 10 hours from now if not provided)
-                    const expiresIn = data.expires_in || 36000;
-                    const expiresAt = new Date(new Date().getTime() + expiresIn * 1000).toISOString();
-                    
-                    // Store tokens
-                    auth = {
-                        accessToken: data.access_token,
-                        refreshToken: data.refresh_token || auth.refreshToken,
-                        expiresAt: expiresAt
-                    };
-                    
-                    localStorage.setItem('podium_access_token', auth.accessToken);
-                    localStorage.setItem('podium_refresh_token', auth.refreshToken);
-                    localStorage.setItem('podium_expires_at', auth.expiresAt);
-                    
-                    console.log("Token refresh successful, updating UI...");
-                    updateAuthUI(true);
-                    loadInitialData();
-                    switchTab('dashboard');
-                } else {
-                    console.error('Failed to refresh token:', data);
-                    alert('Your session has expired. Please log in again.');
-                    updateAuthUI(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error during token refresh:', error);
-                alert('Your session has expired. Please log in again.');
-                updateAuthUI(false);
+          });
+          document.querySelectorAll('.delete-webhook').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+              const uid = btn.dataset.uid;
+              if (!confirm('Delete this webhook?')) return;
+              fetch(`https://api.podium.com/v4/webhooks/${uid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              .then(r=> {
+                if (!r.ok) throw new Error(r.status);
+                showToast('Deleted!', 'success');
+                loadWebhooks();
+              })
+              .catch(e=> showToast('Failed to delete', 'error'));
             });
-        }
-
-<<<<<<< HEAD
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString();
-}
-
-function getStatusClass(status) {
-    switch (status) {
-        case 'ACTIVE':
-            return 'bg-green-100 text-green-800';
-        case 'DRAFT':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'COMPLETED':
-            return 'bg-blue-100 text-blue-800';
-        case 'STOPPED':
-        case 'ERROR':
-            return 'bg-red-100 text-red-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
-}
-
-function formatInteractionType(type) {
-    switch (type) {
-        case 'sent':
-            return 'Message Sent';
-        case 'response':
-            return 'Response Received';
-        case 'feedback_left':
-            return 'Feedback Left';
-        case 'review_left':
-            return 'Review Left';
-        default:
-            return type.replace('_', ' ').charAt(0).toUpperCase() + type.slice(1);
-    }
-}
-
-// Ensure all DOM elements are loaded before initializing
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM fully loaded, initializing application");
-    
-    // Initialize DOM elements before calling init
-    initializeElements();
-    
-    // Initialize the application
-    init();
-    
-    // Add debug button for development
-    const settingsTab = document.getElementById('settings-tab');
-    if (settingsTab) {
-        const debugDiv = document.createElement('div');
-        debugDiv.className = 'bg-white rounded-lg shadow-md p-6 mt-6';
-        debugDiv.innerHTML = `
-            <h3 class="text-lg font-bold mb-4">Debug Tools</h3>
-            <button id="debug-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Debug Settings
-            </button>
-            <button id="clear-storage-btn" class="ml-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Clear Storage
-            </button>
-            <div id="debug-output" class="mt-4 p-4 bg-gray-100 rounded text-sm font-mono hidden"></div>
-        `;
-        settingsTab.appendChild(debugDiv);
-        
-        // Add event listeners for debug buttons
-        document.getElementById('debug-btn')?.addEventListener('click', function() {
-            const output = document.getElementById('debug-output');
-            if (output) {
-                output.classList.remove('hidden');
-                output.innerHTML = `
-                    <p>Client ID: ${localStorage.getItem('podium_client_id') || 'Not set'}</p>
-                    <p>Redirect URI: ${localStorage.getItem('podium_redirect_uri') || 'Not set'}</p>
-                    <p>Access Token: ${localStorage.getItem('podium_access_token') ? '******' : 'Not set'}</p>
-                    <p>Refresh Token: ${localStorage.getItem('podium_refresh_token') ? '******' : 'Not set'}</p>
-                    <p>Expires At: ${localStorage.getItem('podium_expires_at') || 'Not set'}</p>
-                `;
-            }
+          });
+        })
+        .catch(err=>{
+          whContainer.innerHTML = `
+            <div class="text-center py-10">
+              <i class="fas fa-exclamation-circle fa-2x text-red-500 mb-4"></i>
+              <h3 class="text-base font-medium text-gray-900">Error loading webhooks</h3>
+              <p class="text-sm text-gray-500">${err.message}</p>
+            </div>`;
         });
-        
-        document.getElementById('clear-storage-btn')?.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all stored OAuth settings?')) {
-                localStorage.removeItem('podium_client_id');
-                localStorage.removeItem('podium_redirect_uri');
-                localStorage.removeItem('podium_access_token');
-                localStorage.removeItem('podium_refresh_token');
-                localStorage.removeItem('podium_expires_at');
-                alert('All OAuth settings cleared. Page will refresh.');
-                window.location.reload();
-            }
+      }
+
+      function saveWebhook() {
+        const token = localStorage.getItem('eab_accessToken');
+        if (!token) return showToast('Authenticate first', 'error');
+        const url = document.getElementById('webhook-url').value.trim(),
+              secret = document.getElementById('webhook-secret').value.trim(),
+              eventTypes = Array.from(webhooksPanel.querySelectorAll('input.custom-checkbox'))
+                                 .filter(cb=>cb.checked)
+                                 .map(cb=>cb.value);
+        if (!url) return showToast('URL is required', 'error');
+        if (!eventTypes.length) return showToast('Select at least one event', 'error');
+        const btn = document.getElementById('webhook-save-btn');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        fetch('https://api.podium.com/v4/webhooks', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url, secret, eventTypes })
+        })
+        .then(r=> {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(()=> {
+          showToast('Created!', 'success');
+          loadWebhooks();
+        })
+        .catch(err=>{
+          showToast('Failed: '+err.message, 'error');
+          btn.disabled = false; btn.textContent = 'Save';
         });
-    }
-});
-=======
-        // Logout
-        function logout() {
-            console.log("Logging out...");
-            // Clear auth data
-            auth = {
-                accessToken: null,
-                refreshToken: null,
-                expiresAt: null
-            };
-            
-            localStorage.removeItem('podium_access_token');
-            localStorage.removeItem('podium_refresh_token');
-            localStorage.removeItem('podium_expires_at');
-            
-            updateAuthUI(false);
-            switchTab('settings');
+      }
+
+      function updateWebhook(uid) {
+        const token = localStorage.getItem('eab_accessToken');
+        if (!token) return showToast('Authenticate first', 'error');
+        const url      = document.getElementById('webhook-url').value.trim(),
+              secret   = document.getElementById('webhook-secret').value.trim(),
+              disabled = !document.getElementById('webhook-status').checked,
+              eventTypes = Array.from(webhooksPanel.querySelectorAll('input.custom-checkbox'))
+                                 .filter(cb=>cb.checked)
+                                 .map(cb=>cb.value);
+        if (!url) return showToast('URL is required', 'error');
+        if (!eventTypes.length) return showToast('Select events', 'error');
+        const btn = document.getElementById('webhook-save-btn');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+        fetch(`https://api.podium.com/v4/webhooks/${uid}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url, secret, disabled, eventTypes })
+        })
+        .then(r=> {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(()=>{
+          showToast('Updated!', 'success');
+          loadWebhooks();
+        })
+        .catch(err=>{
+          showToast('Failed: '+err.message, 'error');
+          btn.disabled = false; btn.textContent = 'Update';
+        });
+      }
+
+      // API Explorer
+      document.getElementById('send-request-btn').addEventListener('click', ()=>{
+        const token = localStorage.getItem('eab_accessToken');
+        if (!token) return showToast('Authenticate first', 'error');
+        const sel     = document.getElementById('endpoint-select').value.trim();
+        const params  = document.getElementById('api-params').value.trim();
+        const respEl  = document.getElementById('api-response');
+        if (!sel) return showToast('Select endpoint', 'error');
+        const [method, path] = sel.split(' ');
+        respEl.textContent = 'Loading...';
+        let options = {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        };
+        if (['POST','PUT','PATCH'].includes(method) && params) {
+          try {
+            options.body = JSON.stringify(JSON.parse(params));
+          } catch {
+            showToast('Invalid JSON', 'error');
+            respEl.textContent = 'Error: Invalid JSON';
+            return;
+          }
         }
->>>>>>> 96a12df (chore: save latest changes before rebase)
+        fetch(`https://api.podium.com${path}`, options)
+          .then(r=> {
+            const ct = r.headers.get('content-type')||'';
+            return ct.includes('application/json') ? r.json() : r.text();
+          })
+          .then(data=>{
+            respEl.textContent = typeof data==='object' ? JSON.stringify(data,null,2) : data;
+          })
+          .catch(err=>{
+            respEl.textContent = `Error: ${err.message}`;
+          });
+      });
+
+      // Check for OAuth callback
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code'), state = urlParams.get('state');
+      if (code && state) {
+        const savedState = loadState('oauthState');
+        if (state === savedState) {
+          const clientId = loadState('clientId'),
+                clientSecret = loadState('clientSecret'),
+                redirectUri  = loadState('redirectUri');
+          fetch('https://api.podium.com/oauth/token', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              client_id: clientId,
+              client_secret: clientSecret,
+              redirect_uri: redirectUri,
+              grant_type: 'authorization_code',
+              code
+            })
+          })
+          .then(r=>r.json())
+          .then(data=>{
+            localStorage.setItem('eab_accessToken', data.access_token);
+            localStorage.setItem('eab_refreshToken', data.refresh_token);
+            localStorage.setItem('eab_tokenExpiry', Date.now() + data.expires_in*1000);
+            showToast('Authenticated!', 'success');
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch(err=>{
+            showToast('Auth failed: '+err.message,'error');
+          });
+        } else {
+          showToast('Invalid state parameter','error');
+        }
+      }
+
+      // Token refresh every minute
+      setInterval(()=>{
+        const expiry = localStorage.getItem('eab_tokenExpiry'),
+              refresh = localStorage.getItem('eab_refreshToken');
+        if (expiry && refresh && (expiry - Date.now() < 300_000)) {
+          const clientId = loadState('clientId'),
+                clientSecret = loadState('clientSecret');
+          fetch('https://api.podium.com/oauth/token', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              client_id: clientId,
+              client_secret: clientSecret,
+              grant_type: 'refresh_token',
+              refresh_token: refresh
+            })
+          })
+          .then(r=>r.json())
+          .then(data=>{
+            localStorage.setItem('eab_accessToken', data.access_token);
+            localStorage.setItem('eab_refreshToken', data.refresh_token);
+            localStorage.setItem('eab_tokenExpiry', Date.now()+data.expires_in*1000);
+          })
+          .catch(e=> console.error('Token refresh failed',e));
+        }
+      }, 60_000);
+
+      // Subtle button hover animation
+      document.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('mouseenter', ()=> btn.style.transform='translateY(-1px)');
+        btn.addEventListener('mouseleave', ()=> btn.style.transform='translateY(0)');
+      });
+    });
+  })();
+  </script>
+</body>
+</html>
