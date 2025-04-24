@@ -525,39 +525,189 @@
       };
     }
 
-    // Helpers
-    function saveState(key, value) {
-      try { localStorage.setItem('eab_'+key, JSON.stringify(value)); }
-      catch(e) { console.error('Save error', e); }
+    // ======== HELPERS ========
+
+// Save key/value to localStorage with a `eab_` prefix
+function saveState(key, value) {
+  try {
+    localStorage.setItem('eab_' + key, JSON.stringify(value));
+  } catch (e) {
+    console.error('Save error:', e);
+  }
+}
+
+// Load key from localStorage and parse JSON
+function loadState(key) {
+  try {
+    const val = localStorage.getItem('eab_' + key);
+    return val ? JSON.parse(val) : null;
+  } catch (e) {
+    console.error('Load error:', e);
+    return null;
+  }
+}
+
+// Generate a random string ID
+function generateId() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+// Validate a URL string
+function isValidUrl(str) {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Show a toast notification
+function showToast(message, type = "success") {
+  const toast = document.getElementById('toast');
+  const toastIcon = document.getElementById('toast-icon');
+  const toastMessage = document.getElementById('toast-message');
+
+  toast.className = 'toast toast-show';
+
+  if (type === 'success') {
+    toast.classList.add('toast-success');
+    toastIcon.className = 'fas fa-check-circle mr-2';
+  } else {
+    toast.classList.add('toast-error');
+    toastIcon.className = 'fas fa-exclamation-circle mr-2';
+  }
+
+  toastMessage.textContent = message;
+
+  setTimeout(() => {
+    toast.classList.remove('toast-show');
+  }, 3000);
+}
+
+// ======== DOM READY ========
+
+document.addEventListener('DOMContentLoaded', () => {
+  const navLinks = document.querySelectorAll('.nav-link');
+  const panels = document.querySelectorAll('.content-panel');
+
+  // Sidebar navigation logic
+  navLinks.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = link.dataset.target;
+
+      navLinks.forEach(l => l.classList.remove('nav-item-active', 'text-white'));
+      panels.forEach(p => p.classList.add('hidden'));
+
+      link.classList.add('nav-item-active', 'text-white');
+      document.getElementById(`${target}-panel`).classList.remove('hidden');
+      saveState('activePanel', target);
+    });
+  });
+
+  // Load last open tab
+  const active = loadState('activePanel');
+  if (active) {
+    const link = document.querySelector(`.nav-link[data-target="${active}"]`);
+    if (link) link.click();
+  } else {
+    const defaultLink = document.querySelector('.nav-link[data-target="oauth"]');
+    if (defaultLink) defaultLink.click();
+  }
+
+  // ✅ Listen for OAuth callback messages from popup window
+  window.addEventListener("message", (event) => {
+  // ✅ Listen for OAuth callback messages from popup window
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "OAUTH_CALLBACK") {
+      console.log("✅ OAuth Code:", event.data.code);
+      console.log("🔐 OAuth State:", event.data.state);
+
+      const clientId = loadState("clientId");
+      const clientSecret = loadState("clientSecret");
+      const redirectUri = loadState("redirectUri");
+
+      fetch("https://api.podium.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          code: event.data.code,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          localStorage.setItem("eab_accessToken", data.access_token);
+          localStorage.setItem("eab_refreshToken", data.refresh_token);
+          localStorage.setItem("eab_tokenExpiry", Date.now() + data.expires_in * 1000);
+
+          const tokenPreview = data.access_token.slice(-6);
+          const oauthPanel = document.getElementById("oauth-panel");
+          const notice = document.createElement("div");
+
+          notice.className = "mt-6 p-4 bg-green-100 text-green-800 rounded-md shadow-sm text-center text-sm";
+          notice.innerHTML = `
+            <strong>✅ Connected to Podium</strong><br>
+            <span class="block mt-1">Access Token ending in: <code>${tokenPreview}</code></span>
+            <a href="#" class="mt-3 inline-block text-sm font-medium text-teal-600 hover:underline" data-target="api-explorer">
+              ➡️ Explore the API
+            </a>
+          `;
+
+          oauthPanel.appendChild(notice);
+
+          const oauthLink = document.querySelector(`.nav-link[data-target="oauth"]`);
+          if (oauthLink) oauthLink.click();
+
+          showToast("Authenticated! Ready to access API.", "success");
+        })
+        .catch((err) => {
+          showToast("OAuth failed: " + err.message, "error");
+        });
     }
-    function loadState(key) {
-      try {
-        const v = localStorage.getItem('eab_'+key);
-        return v ? JSON.parse(v) : null;
-      } catch(e) { console.error('Load error', e); return null; }
+  });
+
+    if (event.data?.type === "OAUTH_CALLBACK") {
+      console.log("✅ OAuth Code:", event.data.code);
+      console.log("🔐 OAuth State:", event.data.state);
+
+      const clientId = loadState("clientId");
+      const clientSecret = loadState("clientSecret");
+      const redirectUri = loadState("redirectUri");
+
+      fetch("https://api.podium.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          code: event.data.code,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          localStorage.setItem("eab_accessToken", data.access_token);
+          localStorage.setItem("eab_refreshToken", data.refresh_token);
+          localStorage.setItem("eab_tokenExpiry", Date.now() + data.expires_in * 1000);
+          showToast("Authenticated via popup!", "success");
+
+          // Optional: Show Estimate tab or refresh part of UI
+          const oauthLink = document.querySelector(`.nav-link[data-target="oauth"]`);
+          if (oauthLink) oauthLink.click();
+        })
+        .catch((err) => {
+          showToast("Popup OAuth error: " + err.message, "error");
+        });
     }
-    function generateId() {
-      return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
-    }
-    function isValidUrl(s) {
-      try { new URL(s); return true; }
-      catch { return false; }
-    }
-    function showToast(msg, type) {
-      const t = document.getElementById('toast'),
-            icon = document.getElementById('toast-icon'),
-            txt = document.getElementById('toast-message');
-      t.className = 'toast toast-show';
-      if (type==='success') {
-        t.classList.add('toast-success');
-        icon.className = 'fas fa-check-circle mr-2';
-      } else {
-        t.classList.add('toast-error');
-        icon.className = 'fas fa-exclamation-circle mr-2';
-      }
-      txt.textContent = msg;
-      setTimeout(()=> t.classList.remove('toast-show'), 3000);
-    }
+  });
+});
+
 
     document.addEventListener('DOMContentLoaded', ()=> {
       const navLinks = document.querySelectorAll('.nav-link'),
